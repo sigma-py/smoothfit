@@ -15,7 +15,7 @@ jobs:
       - run: pip3 install -r test_requirements.txt
       - run: pylint setup.py smoothfit/ test/*.py
       # The actual test
-      - run: cd test/ && pytest --cov smoothfit
+      - run: cd test/ && MPLBACKEND=Agg pytest --cov smoothfit
       # submit to codecov
       - run: apt-get install -y curl
       - run: bash <(curl -s https://codecov.io/bash)
