@@ -1,0 +1,21 @@
+version: 2
+
+jobs:
+
+  build:
+    working_directory: ~/smoothfit
+    docker:
+      - image: ubuntu:18.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y python3-pip
+      - run: pip3 install -U pytest pytest-cov pylint
+      - checkout
+      - run: pip3 install .
+      - run: pip3 install -r test_requirements.txt
+      - run: pylint setup.py smoothfit/ test/*.py
+      # The actual test
+      - run: cd test/ && pytest --cov smoothfit
+      # submit to codecov
+      - run: apt-get install -y curl
+      - run: bash <(curl -s https://codecov.io/bash)
