@@ -1,14 +1,9 @@
 [MESSAGES CONTROL]
 
 disable=
-    duplicate-code,
-    fixme,
     invalid-name,
-    locally-disabled,
     missing-docstring,
     no-member,
+    no-name-in-module,
     too-many-arguments,
-    too-many-branches,
     too-many-locals,
-    too-many-statements,
-    unused-argument,

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-import numpy
-import smoothfit
 import matplotlib.pyplot as plt
+import numpy
+
+import smoothfit
 
 
 def test_fun():

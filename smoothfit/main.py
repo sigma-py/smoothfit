@@ -6,7 +6,6 @@ from dolfin import (
     )
 from scipy import sparse
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 import numpy
 
 
@@ -46,8 +45,8 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit(x0, y0, a, b, n, eps, verbose=False):
-    mesh = IntervalMesh(50, a, b)
+def fit1d(x0, y0, a, b, n, eps, verbose=False):
+    mesh = IntervalMesh(n, a, b)
     V = FunctionSpace(mesh, 'CG', 1)
 
     u = TrialFunction(V)
