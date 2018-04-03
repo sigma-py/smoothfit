@@ -20,7 +20,7 @@ def test_fun():
     a = -1.5
     b = +1.5
 
-    x, vals = smoothfit.fit(x0, y0, a, b, 50, eps=1.0e-1)
+    x, vals = smoothfit.fit1d(x0, y0, a, b, 50, eps=1.0e-1)
 
     plt.plot(x0, y0, 'xk', label='data')
     plt.plot(

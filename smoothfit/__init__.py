@@ -9,7 +9,7 @@ from .__about__ import (
     __website__
     )
 
-from .main import fit
+from .main import fit1d
 
 try:
     import pipdate
