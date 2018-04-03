@@ -35,6 +35,7 @@ setup(
     install_requires=[
         'numpy',
         'pipdate',
+        'scipy',
         ],
     classifiers=[
         about['__status__'],

@@ -4,9 +4,9 @@ from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
     dot, grad, dx, as_backend_type, BoundingBoxTree, Point, Cell
     )
+import numpy
 from scipy import sparse
 from scipy.optimize import minimize
-import numpy
 
 
 def _build_eval_matrix(V, points):
