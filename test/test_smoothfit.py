@@ -14,7 +14,7 @@ def test_fun():
     # y0 = numpy.exp(x0) + 1.0e-1 * (2*numpy.random.rand(n) - 1)
     # y0 = x0 + 1.0e-1 * (2*numpy.random.rand(n) - 1)
     # y0 = x0**3 + 1.0e-1 * (2*numpy.random.rand(n) - 1)
-    y0 = numpy.sin(1*numpy.pi*x0) + 1.0e-1 * (2*numpy.random.rand(n) - 1)
+    y0 = numpy.sin(1*numpy.pi*x0)  # + 1.0e-1 * (2*numpy.random.rand(n) - 1)
     # y0 = 1 / (x0 + 2) + 1.0e-2 * (2*numpy.random.rand(n) - 1)
 
     a = -1.5

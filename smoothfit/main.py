@@ -60,12 +60,11 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
     size = Lmat.getSize()
     A = sparse.csr_matrix((data, indices, indptr), shape=size)
 
-    # delete first and last row
+    # delete first and last row, belonging to the boundary values
     # https://stackoverflow.com/a/13084858/353337
     mask = numpy.ones(A.shape[0], dtype=bool)
     mask[0] = False
     mask[-1] = False
-    # unfortunatly I think boolean indexing does not work:
     w = numpy.flatnonzero(mask)
     A = A[w, :]
 
@@ -94,9 +93,17 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
         method='L-BFGS-B',
         )
     assert out.success, 'Optimization not successful.'
-
     if verbose:
         print(out.nfev)
         print(out.fun)
+
+    # The least-squares solution is actually less accurate than the minimization
+    # from scipy.optimize import lsq_linear
+    # out = lsq_linear(
+    #     sparse.vstack([A, E]),
+    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
+    #     tol=1e-13
+    #     )
+    # print(out.cost)
 
     return mesh.coordinates(), out.x[::-1]
