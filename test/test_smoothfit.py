@@ -3,11 +3,15 @@
 import matplotlib.pyplot as plt
 import numpy
 
+import meshzoo
+
 import smoothfit
 
 
-def test_fun():
-    numpy.random.seed(123)
+numpy.random.seed(123)
+
+
+def test_1d():
     n = 50
     x0 = numpy.random.rand(n) * 2 - 1
     # y0 = 1 / (1 + 25*x0**2) + 5.0e-2 * (2*numpy.random.rand(n)-1)
@@ -34,5 +38,20 @@ def test_fun():
     return
 
 
+def test_2d():
+    n = 50
+    x0 = numpy.random.rand(n, 2)
+    y0 = numpy.sin(numpy.pi*x0.T[0]) * numpy.sin(numpy.pi*x0.T[1])
+
+    points, cells = meshzoo.rectangle(0.0, 1.0, 0.0, 1.0, 20, 20)
+
+    u = smoothfit.fit(x0, y0, points, cells, eps=1.0e-1, verbose=True)
+
+    from dolfin import XDMFFile
+    xdmf = XDMFFile('temp.xdmf')
+    xdmf.write(u)
+    return
+
+
 if __name__ == '__main__':
-    test_fun()
+    test_2d()

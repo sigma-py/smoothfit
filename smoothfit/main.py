@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 #
 from dolfin import (
-    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
-    dot, grad, dx, as_backend_type, BoundingBoxTree, Point, Cell
+    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
+    grad, dx, as_backend_type, BoundingBoxTree, Point, Cell, MeshEditor, Mesh,
+    Function
     )
 import numpy
 from scipy import sparse
 from scipy.optimize import minimize
 
 
-def _build_eval_matrix(V, points):
+def _build_eval_matrix1d(V, points):
     '''Build the sparse m-by-n matrix that maps a coefficient set for a
     function in V to the values of that function at m given points.
     '''
@@ -33,6 +34,38 @@ def _build_eval_matrix(V, points):
 
         v = numpy.empty(2, dtype=float)
         el.evaluate_basis_all(v, numpy.array(x), coordinate_dofs, cell_id)
+        data.append(v)
+
+    rows = numpy.concatenate(rows)
+    cols = numpy.concatenate(cols)
+    data = numpy.concatenate(data)
+
+    m = len(points)
+    n = V.dim()
+    matrix = sparse.csr_matrix((data, (rows, cols)), shape=(m, n))
+    return matrix
+
+
+def _build_eval_matrix2d(V, points):
+    mesh = V.mesh()
+
+    bbt = BoundingBoxTree()
+    bbt.build(mesh)
+    dofmap = V.dofmap()
+    el = V.element()
+    rows = []
+    cols = []
+    data = []
+    for i, x in enumerate(points):
+        cell_id = bbt.compute_first_entity_collision(Point(*x))
+        cell = Cell(mesh, cell_id)
+        coordinate_dofs = cell.get_vertex_coordinates()
+
+        rows.append([i, i, i])
+        cols.append(dofmap.cell_dofs(cell_id))
+
+        v = numpy.empty(3, dtype=float)
+        el.evaluate_basis_all(v, x, coordinate_dofs, cell_id)
         data.append(v)
 
     rows = numpy.concatenate(rows)
@@ -70,7 +103,7 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
 
     AT = A.getH()
 
-    E = _build_eval_matrix(V, x0)
+    E = _build_eval_matrix1d(V, x0)
     ET = E.getH()
 
     def f(alpha):
@@ -107,3 +140,89 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
     # print(out.cost)
 
     return mesh.coordinates(), out.x[::-1]
+
+
+def fit(x0, y0, points, cells, eps, verbose=False):
+
+    # Convert points, cells to dolfin mesh
+    editor = MeshEditor()
+    mesh = Mesh()
+    # topological and geometrical dimension 2
+    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point[:2])
+    for k, cell in enumerate(cells.astype(numpy.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+
+    # from dolfin import XDMFFile
+    # xdmf = XDMFFile('temp.xdmf')
+    # xdmf.write(mesh)
+    # exit(1)
+
+    V = FunctionSpace(mesh, 'CG', 1)
+
+    u = TrialFunction(V)
+    v = TestFunction(V)
+
+    L = assemble(dot(eps * grad(u), grad(v)) * dx)
+
+    # convert to scipy matrix
+    Lmat = as_backend_type(L).mat()
+    indptr, indices, data = Lmat.getValuesCSR()
+    size = Lmat.getSize()
+    A = sparse.csr_matrix((data, indices, indptr), shape=size)
+
+    # TODO
+    # # delete first and last row, belonging to the boundary values
+    # # https://stackoverflow.com/a/13084858/353337
+    # mask = numpy.ones(A.shape[0], dtype=bool)
+    # mask[0] = False
+    # mask[-1] = False
+    # w = numpy.flatnonzero(mask)
+    # A = A[w, :]
+
+    AT = A.getH()
+
+    E = _build_eval_matrix2d(V, x0)
+    ET = E.getH()
+
+    def f(alpha):
+        A_alpha = A.dot(alpha)
+        d = E.dot(alpha) - y0
+        return (
+            0.5 * numpy.dot(A_alpha, A_alpha) + 0.5 * numpy.dot(d, d),
+            AT.dot(A_alpha) + ET.dot(d)
+            )
+        # return (
+        #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
+        #     A_alpha + E.T.dot(d)
+        #     )
+
+    alpha0 = numpy.zeros(V.dim())
+    out = minimize(
+        f,
+        alpha0,
+        jac=True,
+        method='L-BFGS-B',
+        )
+    assert out.success, 'Optimization not successful.'
+    if verbose:
+        print(out.nfev)
+        print(out.fun)
+
+    # The least-squares solution is actually less accurate than the minimization
+    # from scipy.optimize import lsq_linear
+    # out = lsq_linear(
+    #     sparse.vstack([A, E]),
+    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
+    #     tol=1e-13
+    #     )
+    # print(out.cost)
+
+    u = Function(V)
+    u.vector().set_local(out.x)
+
+    return u
