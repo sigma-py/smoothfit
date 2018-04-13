@@ -39,23 +39,24 @@ def test_1d():
 
 
 def test_2d():
-    n = 100
+    n = 1000
     x0 = numpy.random.rand(n, 2) - 0.5
-    # y0 = numpy.cos(numpy.pi*x0.T[0]) * numpy.cos(numpy.pi*x0.T[1])
-    # y0 = numpy.cos(numpy.pi*x0.T[0])
-    # y0 = x0[:, 0]
-    y0 = -x0[:, 0]**2
     # y0 = numpy.ones(n)
+    # y0 = x0[:, 0]
+    # y0 = -x0[:, 0]**2
+    # y0 = numpy.cos(numpy.pi*x0.T[0])
+    y0 = numpy.cos(numpy.pi*x0.T[0]) * numpy.cos(numpy.pi*x0.T[1])
+    # y0 = numpy.cos(numpy.pi*numpy.sqrt(x0.T[0]**2 + x0.T[1]**2))
 
-     #points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 100, 100)
+    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 100, 100)
 
-    import pygmsh
-    geom = pygmsh.built_in.Geometry()
-    geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
-    points, cells, _, _, _ = pygmsh.generate_mesh(geom)
-    cells = cells['triangle']
+    # import pygmsh
+    # geom = pygmsh.built_in.Geometry()
+    # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
+    # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    # cells = cells['triangle']
 
-    u = smoothfit.fit(x0, y0, points, cells, eps=1.0e0, verbose=True)
+    u = smoothfit.fit(x0, y0, points, cells, eps=1.0e-0, verbose=True)
 
     from dolfin import XDMFFile
     xdmf = XDMFFile('temp.xdmf')

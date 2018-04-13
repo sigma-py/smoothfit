@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+import itertools
 from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
     grad, dx, as_backend_type, BoundingBoxTree, Point, Cell, MeshEditor, Mesh,
@@ -393,5 +394,80 @@ def fitfail(x0, y0, points, cells, eps, verbose=False):
 
 
 def fit(x0, y0, points, cells, eps, verbose=False):
+    # Convert points, cells to dolfin mesh
+    editor = MeshEditor()
+    mesh = Mesh()
+    # topological and geometrical dimension 2
+    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point[:2])
+    for k, cell in enumerate(cells.astype(numpy.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+
+
+    V = FunctionSpace(mesh, 'CG', 1)
+    u = TrialFunction(V)
+    v = TestFunction(V)
+
+    n = FacetNormal(mesh)
+
+    A = []
+    # for i, j in itertools.product([0, 1], repeat=2):
+    for i, j in itertools.combinations_with_replacement([0, 1], 2):
+        L0 = PETScMatrix()
+        assemble(
+            + eps * u.dx(i) * v.dx(j) * dx
+            - eps * u.dx(i) * n[j] * v * ds,
+            tensor=L0
+            )
+        row_ptr, col_indices, data = L0.mat().getValuesCSR()
+        size = L0.mat().getSize()
+        A.append(sparse.csr_matrix((data, col_indices, row_ptr), shape=size))
+
+    AT = [a.getH() for a in A]
+
+    E = _build_eval_matrix2d(V, x0)
+    ET = E.getH()
+
+    def f(alpha):
+        A_alpha = [a.dot(alpha) for a in A]
+        d = E.dot(alpha) - y0
+        return (
+            + 0.5 * sum([numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha])
+            + 0.5 * numpy.dot(d, d),
+            + sum([at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha)])
+            + ET.dot(d)
+            )
+        # return (
+        #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
+        #     A_alpha + E.T.dot(d)
+        #     )
+
+    alpha0 = numpy.zeros(V.dim())
+    out = minimize(
+        f,
+        alpha0,
+        jac=True,
+        method='L-BFGS-B',
+        )
+    assert out.success, 'Optimization not successful.'
+    if verbose:
+        print(out.nfev)
+        print(out.fun)
+
+    # The least-squares solution is actually less accurate than the minimization
+    # from scipy.optimize import lsq_linear
+    # out = lsq_linear(
+    #     sparse.vstack([A, E]),
+    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
+    #     tol=1e-13
+    #     )
+    # print(out.cost)
+
+    u = Function(V)
+    u.vector().set_local(out.x)
 
     return u
