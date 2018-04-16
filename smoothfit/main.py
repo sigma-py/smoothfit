@@ -53,10 +53,10 @@ def _build_eval_matrix(V, points):
 def fit1d(x0, y0, a, b, n, eps, verbose=False):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    return _fit(x0[:, numpy.newaxis], y0, mesh, Eps, verbose=verbose)
+    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, verbose=verbose)
 
 
-def fit(x0, y0, points, cells, eps, verbose=False):
+def fit2d(x0, y0, points, cells, eps, verbose=False):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
@@ -74,10 +74,10 @@ def fit(x0, y0, points, cells, eps, verbose=False):
     # Eps = numpy.array([[eps, 0], [0, eps]])
     Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
 
-    return _fit(x0, y0, mesh, Eps, verbose=verbose)
+    return fit(x0, y0, mesh, Eps, verbose=verbose)
 
 
-def _fit(x0, y0, mesh, Eps, verbose=False):
+def fit(x0, y0, mesh, Eps, verbose=False):
     V = FunctionSpace(mesh, 'CG', 1)
     u = TrialFunction(V)
     v = TestFunction(V)

@@ -62,7 +62,7 @@ def test_2d():
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    u = smoothfit.fit(x0, y0, points, cells, eps=1.0e-0, verbose=True)
+    u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-0, verbose=True)
 
     ref = 0.1390197818673983
     assert abs(assemble(u*u * dx) - ref) < 1.0e-14 * ref
