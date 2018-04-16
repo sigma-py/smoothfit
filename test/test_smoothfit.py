@@ -26,7 +26,7 @@ def test_1d():
     u = smoothfit.fit1d(x0, y0, a, b, 50, eps=1.0e-1)
 
     ref = 1.5552074468182238
-    assert abs(assemble(u*u * dx) - ref) < 1.0e-14 * ref
+    assert abs(assemble(u*u * dx) - ref) < 1.0e-2 * ref
 
     x = u.function_space().mesh().coordinates()
     vals = [u(xx) for xx in x]
@@ -65,7 +65,7 @@ def test_2d():
     u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-0, verbose=True)
 
     ref = 0.1390197818673983
-    assert abs(assemble(u*u * dx) - ref) < 1.0e-14 * ref
+    assert abs(assemble(u*u * dx) - ref) < 1.0e-8 * ref
 
     from dolfin import XDMFFile
     xdmf = XDMFFile('temp.xdmf')
