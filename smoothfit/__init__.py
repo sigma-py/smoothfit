@@ -9,12 +9,12 @@ from .__about__ import (
     __website__
     )
 
-from .main import fit1d
+from .main import fit, fit1d, fit2d
 
-try:
-    import pipdate
-except ImportError:
-    pass
-else:
-    if pipdate.needs_checking(__name__):
-        print(pipdate.check(__name__, __version__), end='')
+# try:
+#     import pipdate
+# except ImportError:
+#     pass
+# else:
+#     if pipdate.needs_checking(__name__):
+#         print(pipdate.check(__name__, __version__), end='')
