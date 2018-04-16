@@ -12,7 +12,7 @@ from scipy import sparse
 from scipy.optimize import minimize
 
 
-def _build_eval_matrix1d(V, points):
+def _build_eval_matrix(V, points):
     '''Build the sparse m-by-n matrix that maps a coefficient set for a
     function in V to the values of that function at m given points.
     '''
@@ -23,38 +23,8 @@ def _build_eval_matrix1d(V, points):
     bbt.build(mesh)
     dofmap = V.dofmap()
     el = V.element()
-    rows = []
-    cols = []
-    data = []
-    for i, x in enumerate(points):
-        cell_id = bbt.compute_first_entity_collision(Point(x))
-        cell = Cell(mesh, cell_id)
-        coordinate_dofs = cell.get_vertex_coordinates()
+    sdim = el.space_dimension()
 
-        rows.append([i, i])
-        cols.append(dofmap.cell_dofs(cell_id))
-
-        v = numpy.empty(2, dtype=float)
-        el.evaluate_basis_all(v, numpy.array(x), coordinate_dofs, cell_id)
-        data.append(v)
-
-    rows = numpy.concatenate(rows)
-    cols = numpy.concatenate(cols)
-    data = numpy.concatenate(data)
-
-    m = len(points)
-    n = V.dim()
-    matrix = sparse.csr_matrix((data, (rows, cols)), shape=(m, n))
-    return matrix
-
-
-def _build_eval_matrix2d(V, points):
-    mesh = V.mesh()
-
-    bbt = BoundingBoxTree()
-    bbt.build(mesh)
-    dofmap = V.dofmap()
-    el = V.element()
     rows = []
     cols = []
     data = []
@@ -63,10 +33,10 @@ def _build_eval_matrix2d(V, points):
         cell = Cell(mesh, cell_id)
         coordinate_dofs = cell.get_vertex_coordinates()
 
-        rows.append([i, i, i])
+        rows.append(numpy.full(sdim, i))
         cols.append(dofmap.cell_dofs(cell_id))
 
-        v = numpy.empty(3, dtype=float)
+        v = numpy.empty(sdim, dtype=float)
         el.evaluate_basis_all(v, x, coordinate_dofs, cell_id)
         data.append(v)
 
@@ -102,7 +72,7 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
 
     AT = A.getH()
 
-    E = _build_eval_matrix1d(V, x0)
+    E = _build_eval_matrix(V, x0[:, numpy.newaxis])
     ET = E.getH()
 
     def f(alpha):
@@ -353,7 +323,7 @@ def fitfail(x0, y0, points, cells, eps, verbose=False):
 
     AT = A.getH()
 
-    E = _build_eval_matrix2d(V, x0)
+    E = _build_eval_matrix(V, x0)
     ET = E.getH()
 
     def f(alpha):
@@ -409,25 +379,28 @@ def fit(x0, y0, points, cells, eps, verbose=False):
         editor.add_cell(k, cell)
     editor.close()
 
-    return _fit(x0, y0, mesh, eps, verbose=verbose)
+    # Eps = numpy.array([[eps, eps], [eps, eps]])
+    # Eps = numpy.array([[eps, 0], [0, eps]])
+    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+
+    return _fit(x0, y0, mesh, Eps, verbose=verbose)
 
 
-def _fit(x0, y0, mesh, eps, verbose=False):
+def _fit(x0, y0, mesh, Eps, verbose=False):
     V = FunctionSpace(mesh, 'CG', 1)
     u = TrialFunction(V)
     v = TestFunction(V)
 
     n = FacetNormal(mesh)
 
+    dim = mesh.geometry().dim()
+
     A = []
     # No need for itertools.product([0, 1], repeat=2) here. The matrices
     # corresponding to the derivatives xy, yx are equal. TODO perhaps add a
     # weight?
     # for i, j in itertools.combinations_with_replacement([0, 1], 2):
-    # Eps = numpy.array([[eps, eps], [eps, eps]])
-    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
-    # Eps = numpy.array([[eps, 0], [0, eps]])
-    for i, j in itertools.product([0, 1], repeat=2):
+    for i, j in itertools.product([0, 1], repeat=dim):
         L0 = PETScMatrix()
         assemble(
             + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
@@ -441,7 +414,7 @@ def _fit(x0, y0, mesh, eps, verbose=False):
 
     AT = [a.getH() for a in A]
 
-    E = _build_eval_matrix2d(V, x0)
+    E = _build_eval_matrix(V, x0)
     ET = E.getH()
 
     def f(alpha):
@@ -476,17 +449,6 @@ def _fit(x0, y0, mesh, eps, verbose=False):
         assert numpy.all(Asum.indices == AA.indices)
         assert numpy.all(Asum.indptr == AA.indptr)
         assert numpy.all(abs(Asum.data - AA.data) < 1.0e-14)
-
-    # vals, vecs = numpy.linalg.eig(Asum.todense())
-    # print()
-    # print('eigs Asum')
-    # print(numpy.sort(vals))
-    # # print(vecs[:, 0].T)
-    # vals, vecs = numpy.linalg.eig(AA.todense())
-    # print()
-    # print('eigs AA')
-    # print(numpy.sort(vals))
-    # exit(1)
 
     alpha0 = numpy.zeros(V.dim())
     out = minimize(
