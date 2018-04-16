@@ -52,66 +52,9 @@ def _build_eval_matrix(V, points):
 
 def fit1d(x0, y0, a, b, n, eps, verbose=False):
     mesh = IntervalMesh(n, a, b)
-    V = FunctionSpace(mesh, 'CG', 1)
 
-    u = TrialFunction(V)
-    v = TestFunction(V)
-
-    n = FacetNormal(V.mesh())
-    L = assemble(
-        dot(eps * grad(u), grad(v)) * dx
-        # Adding this term effectively removed the boundary conditions
-        - dot(eps*grad(u), n) * v * ds
-        )
-
-    # convert to scipy matrix
-    Lmat = as_backend_type(L).mat()
-    indptr, indices, data = Lmat.getValuesCSR()
-    size = Lmat.getSize()
-    A = sparse.csr_matrix((data, indices, indptr), shape=size)
-
-    AT = A.getH()
-
-    E = _build_eval_matrix(V, x0[:, numpy.newaxis])
-    ET = E.getH()
-
-    def f(alpha):
-        A_alpha = A.dot(alpha)
-        d = E.dot(alpha) - y0
-        return (
-            0.5 * numpy.dot(A_alpha, A_alpha) + 0.5 * numpy.dot(d, d),
-            AT.dot(A_alpha) + ET.dot(d)
-            )
-        # return (
-        #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
-        #     A_alpha + E.T.dot(d)
-        #     )
-
-    alpha0 = numpy.zeros(V.dim())
-    out = minimize(
-        f,
-        alpha0,
-        jac=True,
-        method='L-BFGS-B',
-        )
-    assert out.success, 'Optimization not successful.'
-    if verbose:
-        print(out.nfev)
-        print(out.fun)
-
-    # The least-squares solution is actually less accurate than the minimization
-    # from scipy.optimize import lsq_linear
-    # out = lsq_linear(
-    #     sparse.vstack([A, E]),
-    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
-    #     tol=1e-13
-    #     )
-    # print(out.cost)
-
-    u = Function(V)
-    u.vector().set_local(out.x)
-
-    return u
+    Eps = numpy.array([[eps]])
+    return _fit(x0[:, numpy.newaxis], y0, mesh, Eps, verbose=verbose)
 
 
 def fitfail(x0, y0, points, cells, eps, verbose=False):
@@ -400,17 +343,20 @@ def _fit(x0, y0, mesh, Eps, verbose=False):
     # corresponding to the derivatives xy, yx are equal. TODO perhaps add a
     # weight?
     # for i, j in itertools.combinations_with_replacement([0, 1], 2):
-    for i, j in itertools.product([0, 1], repeat=dim):
-        L0 = PETScMatrix()
-        assemble(
-            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
-            # pylint: disable=unsubscriptable-object
-            - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
-            tensor=L0
-            )
-        row_ptr, col_indices, data = L0.mat().getValuesCSR()
-        size = L0.mat().getSize()
-        A.append(sparse.csr_matrix((data, col_indices, row_ptr), shape=size))
+    for i in range(dim):
+        for j in range(dim):
+            L0 = PETScMatrix()
+            assemble(
+                + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+                # pylint: disable=unsubscriptable-object
+                - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
+                tensor=L0
+                )
+            row_ptr, col_indices, data = L0.mat().getValuesCSR()
+            size = L0.mat().getSize()
+            A.append(
+                sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
+                )
 
     AT = [a.getH() for a in A]
 
