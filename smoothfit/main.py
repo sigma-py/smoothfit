@@ -5,7 +5,7 @@ from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
     grad, dx, as_backend_type, BoundingBoxTree, Point, Cell, MeshEditor, Mesh,
     Function, PETScMatrix, DirichletBC, la_index_dtype, FacetNormal, ds,
-    Expression, div, XDMFFile
+    Expression, div, XDMFFile, Constant, as_tensor
     )
 from petsc4py import PETSc
 import numpy
@@ -407,7 +407,6 @@ def fit(x0, y0, points, cells, eps, verbose=False):
         editor.add_cell(k, cell)
     editor.close()
 
-
     V = FunctionSpace(mesh, 'CG', 1)
     u = TrialFunction(V)
     v = TestFunction(V)
@@ -415,12 +414,18 @@ def fit(x0, y0, points, cells, eps, verbose=False):
     n = FacetNormal(mesh)
 
     A = []
-    # for i, j in itertools.product([0, 1], repeat=2):
-    for i, j in itertools.combinations_with_replacement([0, 1], 2):
+    # No need for itertools.product([0, 1], repeat=2) here. The matrices
+    # corresponding to the derivatives xy, yx are equal. TODO perhaps add a
+    # weight?
+    # for i, j in itertools.combinations_with_replacement([0, 1], 2):
+    # Eps = numpy.array([[eps, eps], [eps, eps]])
+    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    # Eps = numpy.array([[eps, 0], [0, eps]])
+    for i, j in itertools.product([0, 1], repeat=2):
         L0 = PETScMatrix()
         assemble(
-            + eps * u.dx(i) * v.dx(j) * dx
-            - eps * u.dx(i) * n[j] * v * ds,
+            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
             tensor=L0
             )
         row_ptr, col_indices, data = L0.mat().getValuesCSR()
@@ -438,13 +443,43 @@ def fit(x0, y0, points, cells, eps, verbose=False):
         return (
             + 0.5 * sum([numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha])
             + 0.5 * numpy.dot(d, d),
+            # gradient
             + sum([at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha)])
             + ET.dot(d)
             )
         # return (
         #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
-        #     A_alpha + E.T.dot(d)
+        #     A_alpha + ET.dot(d)
         #     )
+
+    assert_equality = False
+    if assert_equality:
+        # The sum of the `A`s is exactly that:
+        Asum = sum(A)
+        L = PETScMatrix()
+        n = FacetNormal(V.mesh())
+        assemble(
+            + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+            - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
+            tensor=L
+            )
+        row_ptr, col_indices, data = L.mat().getValuesCSR()
+        size = L.mat().getSize()
+        AA = sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
+        assert numpy.all(Asum.indices == AA.indices)
+        assert numpy.all(Asum.indptr == AA.indptr)
+        assert numpy.all(abs(Asum.data - AA.data) < 1.0e-14)
+
+    # vals, vecs = numpy.linalg.eig(Asum.todense())
+    # print()
+    # print('eigs Asum')
+    # print(numpy.sort(vals))
+    # # print(vecs[:, 0].T)
+    # vals, vecs = numpy.linalg.eig(AA.todense())
+    # print()
+    # print('eigs AA')
+    # print(numpy.sort(vals))
+    # exit(1)
 
     alpha0 = numpy.zeros(V.dim())
     out = minimize(
