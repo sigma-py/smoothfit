@@ -3,8 +3,6 @@
 import matplotlib.pyplot as plt
 import numpy
 
-import meshzoo
-
 import smoothfit
 
 
@@ -48,13 +46,14 @@ def test_2d():
     # y0 = numpy.cos(numpy.pi*x0.T[0]) * numpy.cos(numpy.pi*x0.T[1])
     # y0 = numpy.cos(numpy.pi*numpy.sqrt(x0.T[0]**2 + x0.T[1]**2))
 
-    # points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 4, 4)
+    import meshzoo
+    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 10, 10)
 
-    import pygmsh
-    geom = pygmsh.built_in.Geometry()
-    geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
-    points, cells, _, _, _ = pygmsh.generate_mesh(geom)
-    cells = cells['triangle']
+    # import pygmsh
+    # geom = pygmsh.built_in.Geometry()
+    # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
+    # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    # cells = cells['triangle']
 
     u = smoothfit.fit(x0, y0, points, cells, eps=1.0e-0, verbose=True)
 

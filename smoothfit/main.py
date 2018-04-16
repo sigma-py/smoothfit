@@ -4,10 +4,9 @@ import itertools
 from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
     grad, dx, as_backend_type, BoundingBoxTree, Point, Cell, MeshEditor, Mesh,
-    Function, PETScMatrix, DirichletBC, la_index_dtype, FacetNormal, ds,
-    Expression, div, XDMFFile, Constant, as_tensor
+    Function, PETScMatrix, FacetNormal, ds, Expression, XDMFFile, Constant,
+    as_tensor
     )
-from petsc4py import PETSc
 import numpy
 from scipy import sparse
 from scipy.optimize import minimize
@@ -217,7 +216,7 @@ def fitfail(x0, y0, points, cells, eps, verbose=False):
 
     n = FacetNormal(mesh)
     L = PETScMatrix()
-    xy = Expression(('x[0]', 'x[1]'), degree=1)
+    # xy = Expression(('x[0]', 'x[1]'), degree=1)
     assemble(
         eps * dot(grad(u), grad(v)) * dx
         # + eps/3 * div(grad(u) - xy * dot(grad(u), n)) * v * ds,
@@ -425,6 +424,7 @@ def fit(x0, y0, points, cells, eps, verbose=False):
         L0 = PETScMatrix()
         assemble(
             + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            # pylint: disable=unsubscriptable-object
             - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
             tensor=L0
             )
