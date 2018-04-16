@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-import itertools
 from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
-    grad, dx, as_backend_type, BoundingBoxTree, Point, Cell, MeshEditor, Mesh,
-    Function, PETScMatrix, FacetNormal, ds, Expression, XDMFFile, Constant,
-    as_tensor
+    grad, dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
+    PETScMatrix, FacetNormal, ds, Constant, as_tensor
     )
 import numpy
 from scipy import sparse
