@@ -138,7 +138,10 @@ def fit1d(x0, y0, a, b, n, eps, verbose=False):
     #     )
     # print(out.cost)
 
-    return mesh.coordinates(), out.x[::-1]
+    u = Function(V)
+    u.vector().set_local(out.x)
+
+    return u
 
 
 def fitfail(x0, y0, points, cells, eps, verbose=False):
@@ -406,6 +409,10 @@ def fit(x0, y0, points, cells, eps, verbose=False):
         editor.add_cell(k, cell)
     editor.close()
 
+    return _fit(x0, y0, mesh, eps, verbose=verbose)
+
+
+def _fit(x0, y0, mesh, eps, verbose=False):
     V = FunctionSpace(mesh, 'CG', 1)
     u = TrialFunction(V)
     v = TestFunction(V)

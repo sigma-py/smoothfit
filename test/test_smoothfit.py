@@ -22,11 +22,13 @@ def test_1d():
     a = -1.5
     b = +1.5
 
-    x, vals = smoothfit.fit1d(x0, y0, a, b, 50, eps=1.0e-1)
+    u = smoothfit.fit1d(x0, y0, a, b, 50, eps=1.0e-1)
+
+    x = u.function_space().mesh().coordinates()
 
     plt.plot(x0, y0, 'xk', label='data')
     plt.plot(
-        x, vals, '-',
+        x, [u(xx) for xx in x], '-',
         color='k', alpha=0.3,
         label='smooth fit'
         )
@@ -64,4 +66,4 @@ def test_2d():
 
 
 if __name__ == '__main__':
-    test_2d()
+    test_1d()
