@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+from dolfin import assemble, dx
 import matplotlib.pyplot as plt
 import numpy
 
@@ -24,11 +25,15 @@ def test_1d():
 
     u = smoothfit.fit1d(x0, y0, a, b, 50, eps=1.0e-1)
 
+    ref = 1.5552074468182238
+    assert abs(assemble(u*u * dx) - ref) < 1.0e-14 * ref
+
     x = u.function_space().mesh().coordinates()
+    vals = [u(xx) for xx in x]
 
     plt.plot(x0, y0, 'xk', label='data')
     plt.plot(
-        x, [u(xx) for xx in x], '-',
+        x, vals, '-',
         color='k', alpha=0.3,
         label='smooth fit'
         )
@@ -58,6 +63,9 @@ def test_2d():
     # cells = cells['triangle']
 
     u = smoothfit.fit(x0, y0, points, cells, eps=1.0e-0, verbose=True)
+
+    ref = 0.1390197818673983
+    assert abs(assemble(u*u * dx) - ref) < 1.0e-14 * ref
 
     from dolfin import XDMFFile
     xdmf = XDMFFile('temp.xdmf')
