@@ -109,25 +109,9 @@ def fit(x0, y0, mesh, Eps, verbose=False):
     E = _build_eval_matrix(V, x0)
     ET = E.getH()
 
-    def f(alpha):
-        A_alpha = [a.dot(alpha) for a in A]
-        d = E.dot(alpha) - y0
-        return (
-            + 0.5 * sum([numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha])
-            + 0.5 * numpy.dot(d, d),
-            # gradient
-            + sum([at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha)])
-            + ET.dot(d)
-            )
-        # return (
-        #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
-        #     A_alpha + ET.dot(d)
-        #     )
-
-    assert_equality = False
+    assert_equality = True
     if assert_equality:
         # The sum of the `A`s is exactly that:
-        Asum = sum(A)
         L = PETScMatrix()
         n = FacetNormal(V.mesh())
         assemble(
@@ -138,9 +122,37 @@ def fit(x0, y0, mesh, Eps, verbose=False):
         row_ptr, col_indices, data = L.mat().getValuesCSR()
         size = L.mat().getSize()
         AA = sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
-        assert numpy.all(Asum.indices == AA.indices)
-        assert numpy.all(Asum.indptr == AA.indptr)
-        assert numpy.all(abs(Asum.data - AA.data) < 1.0e-14)
+
+        diff = AA - sum(A)
+        assert numpy.all(abs(diff.data) < 1.0e-14)
+
+
+    def f(alpha):
+        d = E.dot(alpha) - y0
+        A_alpha = [a.dot(alpha) for a in A]
+        return (
+            + 0.5 * sum(numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha)
+            + 0.5 * numpy.dot(d, d),
+            # gradient
+            + sum(at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha))
+            + ET.dot(d)
+            )
+        # return (
+        #     + 0.5 * sum(numpy.dot(alpha, a_alpha) for a_alpha in A_alpha)
+        #     + 0.5 * numpy.dot(d, d),
+        #     # gradient
+        #     + sum(A_alpha)
+        #     + ET.dot(d)
+        #     )
+        # Asum = sum(A)
+        # Asum_alpha = Asum.dot(alpha)
+        # return (
+        #     + 0.5 * numpy.dot(alpha, Asum_alpha)
+        #     + 0.5 * numpy.dot(d, d),
+        #     # gradient
+        #     + Asum_alpha
+        #     + ET.dot(d)
+        #     )
 
     alpha0 = numpy.zeros(V.dim())
     out = minimize(
@@ -148,7 +160,9 @@ def fit(x0, y0, mesh, Eps, verbose=False):
         alpha0,
         jac=True,
         method='L-BFGS-B',
+        tol=1.0e-14
         )
+    print(out)
     assert out.success, 'Optimization not successful.'
     if verbose:
         print(out.nfev)
