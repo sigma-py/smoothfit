@@ -3,7 +3,7 @@
 from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
     grad, dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    PETScMatrix, FacetNormal, ds, Constant, as_tensor
+    FacetNormal, ds, Constant, as_tensor, EigenMatrix
     )
 import numpy
 from scipy import sparse
@@ -91,18 +91,14 @@ def fit(x0, y0, mesh, Eps, verbose=False):
     # for i, j in itertools.combinations_with_replacement([0, 1], 2):
     for i in range(dim):
         for j in range(dim):
-            L0 = PETScMatrix()
+            L0 = EigenMatrix()
             assemble(
                 + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
                 # pylint: disable=unsubscriptable-object
                 - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
                 tensor=L0
                 )
-            row_ptr, col_indices, data = L0.mat().getValuesCSR()
-            size = L0.mat().getSize()
-            A.append(
-                sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
-                )
+            A.append(L0.sparray())
 
     AT = [a.getH() for a in A]
 
@@ -112,16 +108,14 @@ def fit(x0, y0, mesh, Eps, verbose=False):
     assert_equality = True
     if assert_equality:
         # The sum of the `A`s is exactly that:
-        L = PETScMatrix()
+        L = EigenMatrix()
         n = FacetNormal(V.mesh())
         assemble(
             + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
             - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
             tensor=L
             )
-        row_ptr, col_indices, data = L.mat().getValuesCSR()
-        size = L.mat().getSize()
-        AA = sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
+        AA = L.sparray()
 
         diff = AA - sum(A)
         assert numpy.all(abs(diff.data) < 1.0e-14)
