@@ -100,12 +100,9 @@ def fit(x0, y0, mesh, Eps, verbose=False):
                 )
             A.append(L0.sparray())
 
-    AT = [a.getH() for a in A]
-
     E = _build_eval_matrix(V, x0)
-    ET = E.getH()
 
-    assert_equality = True
+    assert_equality = False
     if assert_equality:
         # The sum of the `A`s is exactly that:
         L = EigenMatrix()
@@ -116,10 +113,38 @@ def fit(x0, y0, mesh, Eps, verbose=False):
             tensor=L
             )
         AA = L.sparray()
-
         diff = AA - sum(A)
         assert numpy.all(abs(diff.data) < 1.0e-14)
+        #
+        # ATAsum = sum(a.T.dot(a) for a in A)
+        # diff = AA.T.dot(AA) - ATAsum
+        # import matplotlib.pyplot as plt
+        # import betterspy
+        # betterspy.show(ATAsum)
+        # betterspy.show(AA.T.dot(AA))
+        # betterspy.show(ATAsum - AA.T.dot(AA))
+        # plt.show()
+        # print(diff.data)
+        # assert numpy.all(abs(diff.data) < 1.0e-14)
 
+    # x = _minimize(V, A, E, y0, verbose)
+
+    M = sparse.vstack(A + [E])
+    b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+    # x, istop, itn, r1norm, r2norm, anorm, acond, arnorm, xnorm, var = \
+    #     sparse.linalg.lsqr(M, b, show=True)
+    x, istop, *_ = sparse.linalg.lsmr(M, b, show=verbose)
+    assert istop == 2, 'LSMR not successful.'
+
+    u = Function(V)
+    u.vector().set_local(x)
+
+    return u
+
+
+def _minimize(V, A, E, ET, y0, verbose):
+    AT = [a.getH() for a in A]
+    ET = E.getH()
 
     def f(alpha):
         d = E.dot(alpha) - y0
@@ -131,47 +156,25 @@ def fit(x0, y0, mesh, Eps, verbose=False):
             + sum(at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha))
             + ET.dot(d)
             )
-        # return (
-        #     + 0.5 * sum(numpy.dot(alpha, a_alpha) for a_alpha in A_alpha)
-        #     + 0.5 * numpy.dot(d, d),
-        #     # gradient
-        #     + sum(A_alpha)
-        #     + ET.dot(d)
-        #     )
-        # Asum = sum(A)
-        # Asum_alpha = Asum.dot(alpha)
-        # return (
-        #     + 0.5 * numpy.dot(alpha, Asum_alpha)
-        #     + 0.5 * numpy.dot(d, d),
-        #     # gradient
-        #     + Asum_alpha
-        #     + ET.dot(d)
-        #     )
+
+    # pylint: disable=unused-argument
+    def hessp(x, p):
+        return sum(at.dot(a.dot(p)) for at, a in zip(AT, A)) + ET.dot(E.dot(p))
 
     alpha0 = numpy.zeros(V.dim())
     out = minimize(
         f,
         alpha0,
         jac=True,
-        method='L-BFGS-B',
+        hessp=hessp,
+        # method='L-BFGS-B',
+        method='Newton-CG',
         tol=1.0e-14
         )
-    print(out)
-    assert out.success, 'Optimization not successful.'
     if verbose:
-        print(out.nfev)
-        print(out.fun)
+        print('minimization successful? {}'.format(out.success))
+        print('number of function evals: {}'.format(out.nfev))
+        print('cost functional value: {}'.format(out.fun))
+    assert out.success, 'Optimization not successful.'
 
-    # The least-squares solution is actually less accurate than the minimization
-    # from scipy.optimize import lsq_linear
-    # out = lsq_linear(
-    #     sparse.vstack([A, E]),
-    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
-    #     tol=1e-13
-    #     )
-    # print(out.cost)
-
-    u = Function(V)
-    u.vector().set_local(out.x)
-
-    return u
+    return out.x
