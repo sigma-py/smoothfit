@@ -24,14 +24,12 @@ def _assemble_eigen(form, bc=None):
     return L
 
 
-def solve(M, b):
+def solve(M, b, mesh, Eps):
     V = FunctionSpace(mesh, 'CG', 1)
     u = TrialFunction(V)
     v = TestFunction(V)
 
     n = FacetNormal(mesh)
-
-    exit(1)
 
     dim = mesh.geometry().dim()
 
@@ -46,8 +44,6 @@ def solve(M, b):
         for i in range(dim)
         ]
     Aflat = [item for sublist in A for item in sublist]
-
-    E = _build_eval_matrix(V, x0)
 
     assert_equality = False
     if assert_equality:
@@ -117,18 +113,20 @@ def solve(M, b):
     # exit(1)
 
     ml = pyamg.smoothed_aggregation_solver(AA2)
-    res = []
-    b = numpy.random.rand(AA2.shape[0])
-    x0 = numpy.zeros(AA2.shape[1])
-    x = ml.solve(b, x0, residuals=res, tol=1.0e-12)
+    # res = []
+    # b = numpy.random.rand(AA2.shape[0])
+    # x0 = numpy.zeros(AA2.shape[1])
+    # x = ml.solve(b, x0, residuals=res, tol=1.0e-12)
     # print(res)
     # plt.semilogy(res)
     # plt.show()
+
     mlT = pyamg.smoothed_aggregation_solver(AA2.T.tocsr())
-    res = []
-    b = numpy.random.rand(AA2.shape[0])
-    x0 = numpy.zeros(AA2.shape[1])
-    x = mlT.solve(b, x0, residuals=res, tol=1.0e-12)
+    # res = []
+    # b = numpy.random.rand(AA2.shape[0])
+    # x0 = numpy.zeros(AA2.shape[1])
+    # x = mlT.solve(b, x0, residuals=res, tol=1.0e-12)
+
     # print(res)
     def prec_matvec(b):
         n = len(b)
@@ -143,14 +141,15 @@ def solve(M, b):
     # x = prec_matvec(b)
     # print(b - AA2.T.dot(AA2.dot(x)))
 
-    MTM = M.T.dot(M)
+    MTM = sparse.linalg.LinearOperator(
+        (M.shape[1], M.shape[1]),
+        matvec=lambda x: M.T.dot(M.dot(x))
+        )
 
     linear_system = krypy.linsys.LinearSystem(MTM, M.T.dot(b), M=prec)
     out = krypy.linsys.Gmres(linear_system, tol=1.0e-12)
 
-    print(out.resnorms)
-    plt.semilogy(out.resnorms)
-    plt.show()
-    exit(1)
+    # plt.semilogy(out.resnorms)
+    # plt.show()
 
-    return out.x
+    return out.xk

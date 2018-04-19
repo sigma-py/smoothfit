@@ -130,7 +130,6 @@ def fit(x0, y0, mesh, Eps, verbose=False, solver='spsolve'):
         assert istop == 2, \
             'sparse.linalg.lsmr not successful (error code {})'.format(istop)
     elif solver == 'gmres':
-        MTM = M.T.dot(M)
         A = sparse.linalg.LinearOperator(
             (M.shape[1], M.shape[1]),
             matvec=lambda x: M.T.dot(M.dot(x))
@@ -138,10 +137,9 @@ def fit(x0, y0, mesh, Eps, verbose=False, solver='spsolve'):
         x, info = sparse.linalg.gmres(A, M.T.dot(b), tol=1.0e-12)
         assert info == 0, \
             'sparse.linalg.gmres not successful (error code {})'.format(info)
-        print(x)
     else:
         assert solver == 'prec-gmres', 'Unknown solver \'{}\'.'.format(solver)
-        x = prec_solver.solve(M, b)
+        x = prec_solver.solve(M, b, mesh, Eps)
 
     u = Function(V)
     u.vector().set_local(x)
