@@ -48,13 +48,14 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, eps, verbose=False):
+def fit1d(x0, y0, a, b, n, eps, degree=1, verbose=False):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, verbose=verbose)
+    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose)
 
 
-def fit2d(x0, y0, points, cells, eps, verbose=False, solver='spsolve'):
+def fit2d(x0, y0, points, cells, eps,
+          degree=1, verbose=False, solver='spsolve'):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
@@ -84,8 +85,8 @@ def _assemble_eigen(form, bc=None):
     return L
 
 
-def fit(x0, y0, mesh, Eps, verbose=False, solver='spsolve'):
-    V = FunctionSpace(mesh, 'CG', 1)
+def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='spsolve'):
+    V = FunctionSpace(mesh, 'CG', degree)
     u = TrialFunction(V)
     v = TestFunction(V)
 

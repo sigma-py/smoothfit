@@ -9,7 +9,7 @@ import smoothfit
 
 
 def test_1d():
-    n = 100
+    n = 20
     # x0 = numpy.linspace(-1.0, 1.0, n)
     numpy.random.seed(123)
     x0 = numpy.random.rand(n) * 2 - 1
@@ -25,13 +25,14 @@ def test_1d():
     a = -1.5
     b = +1.5
 
-    u = smoothfit.fit1d(x0, y0, a, b, 100, eps=1.0e-1)
+    u = smoothfit.fit1d(x0, y0, a, b, 10, degree=2, eps=1.0e-1)
 
     # ref = 1.5552074468182238
     # print(assemble(u*u * dx))
     # assert abs(assemble(u*u * dx) - ref) < 1.0e-2 * ref
 
-    x = u.function_space().mesh().coordinates()
+    # x = u.function_space().mesh().coordinates()
+    x = numpy.linspace(a, b, 201)
     vals = [u(xx) for xx in x]
 
     plt.plot(x0, y0, 'xk', label='data')
@@ -84,4 +85,5 @@ def test_2d(solver):
 
 
 if __name__ == '__main__':
-    test_2d('lsmr')
+    test_1d()
+    # test_2d('lsmr')
