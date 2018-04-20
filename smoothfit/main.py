@@ -9,8 +9,6 @@ import numpy
 from scipy import sparse
 from scipy.optimize import minimize
 
-from . import prec_solver
-
 
 def _build_eval_matrix(V, points):
     '''Build the sparse m-by-n matrix that maps a coefficient set for a
@@ -129,7 +127,8 @@ def fit(x0, y0, mesh, Eps, verbose=False, solver='spsolve'):
             )
         assert istop == 2, \
             'sparse.linalg.lsmr not successful (error code {})'.format(istop)
-    elif solver == 'gmres':
+    else:
+        assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
         A = sparse.linalg.LinearOperator(
             (M.shape[1], M.shape[1]),
             matvec=lambda x: M.T.dot(M.dot(x))
@@ -137,9 +136,6 @@ def fit(x0, y0, mesh, Eps, verbose=False, solver='spsolve'):
         x, info = sparse.linalg.gmres(A, M.T.dot(b), tol=1.0e-12)
         assert info == 0, \
             'sparse.linalg.gmres not successful (error code {})'.format(info)
-    else:
-        assert solver == 'prec-gmres', 'Unknown solver \'{}\'.'.format(solver)
-        x = prec_solver.solve(M, b, mesh, Eps)
 
     u = Function(V)
     u.vector().set_local(x)

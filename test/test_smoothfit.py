@@ -47,7 +47,7 @@ def test_1d():
 
 
 @pytest.mark.parametrize(
-    'solver', ['spsolve', 'gmres', 'lsqr', 'lsmr', 'prec-gmres']
+    'solver', ['spsolve', 'gmres', 'lsqr', 'lsmr']
     )
 def test_2d(solver):
     n = 200
@@ -84,4 +84,4 @@ def test_2d(solver):
 
 
 if __name__ == '__main__':
-    test_2d('spsolve')
+    test_2d('lsmr')

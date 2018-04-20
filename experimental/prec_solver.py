@@ -16,10 +16,13 @@ from scipy.sparse.linalg import LinearOperator
 
 
 
-def _assemble_eigen(form, bc=None):
+def _assemble_eigen(form, bcs=None):
+    if bcs is None:
+        bcs = []
+
     L = EigenMatrix()
     assemble(form, tensor=L)
-    if bc is not None:
+    for bc in bcs:
         bc.apply(L)
     return L
 
@@ -65,21 +68,50 @@ def solve(M, b, mesh, Eps):
         # print(diff.data)
         # assert numpy.all(abs(diff.data) < 1.0e-14)
 
+    tol=1.0e-13
+
+    def lower(x, on_boundary):
+        return on_boundary and abs(x[1] + 1.0) < tol
+
+    def right(x, on_boundary):
+        return on_boundary and abs(x[0] - 1.0) < tol
+
+    def upper_left(x, on_boundary):
+        return on_boundary and (abs(x[0] + 1.0) < tol) and (abs(x[1] - 1.0)<tol)
+
+    def lower_left(x, on_boundary):
+        return on_boundary and (abs(x[0] + 1.0) < tol) and (abs(x[1] + 1.0)<tol)
+
+    def lower_right(x, on_boundary):
+        return on_boundary and (abs(x[0] - 1.0) < tol) and (abs(x[1] + 1.0)<tol)
+
+    bcs = [
+        DirichletBC(V, Constant(0.0), upper_left, method='pointwise'),
+        DirichletBC(V, Constant(0.0), lower_left, method='pointwise'),
+        DirichletBC(V, Constant(0.0), lower_right, method='pointwise'),
+        ]
+
     # TODO THIS IS IT
     AA2 = _assemble_eigen(
         + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
         - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
-        bc=DirichletBC(V, Constant(0.0), 'on_boundary')
+        # bcs=[DirichletBC(V, Constant(0.0), 'on_boundary')]
+        # bcs=bcs
+        bcs=[
+            DirichletBC(V, Constant(0.0), lower),
+            DirichletBC(V, Constant(0.0), right),
+            ]
         ).sparray()
 
-    # ATA2 = AA2.dot(AA2)
+    ATA2 = AA2.dot(AA2)
     # ATAsum = sum(a.T.dot(a) for a in Aflat)
 
     # ATAsum_eigs = numpy.sort(numpy.linalg.eigvalsh(ATAsum.todense()))
     # print(ATAsum_eigs)
     # print()
-    # ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2.todense()))
-    # print(ATA2_eigs)
+    ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2.todense()))
+    print(ATA2_eigs)
+    exit(1)
     # plt.semilogy(range(len(ATAsum_eigs)), ATAsum_eigs, '.', label='ATAsum')
     # plt.semilogy(range(len(ATA2_eigs)), ATA2_eigs, '.', label='ATA2')
     # plt.legend()
