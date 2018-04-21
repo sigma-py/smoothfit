@@ -77,11 +77,9 @@ def fit2d(x0, y0, points, cells, eps,
     return fit(x0, y0, mesh, Eps, degree=degree, verbose=verbose, solver=solver)
 
 
-def _assemble_eigen(form, bc=None):
+def _assemble_eigen(form):
     L = EigenMatrix()
     assemble(form, tensor=L)
-    if bc is not None:
-        bc.apply(L)
     return L
 
 
