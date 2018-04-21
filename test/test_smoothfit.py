@@ -85,5 +85,5 @@ def test_2d(solver):
 
 
 if __name__ == '__main__':
-    test_1d()
-    # test_2d('lsmr')
+    # test_1d()
+    test_2d('lsmr')
