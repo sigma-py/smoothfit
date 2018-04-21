@@ -74,7 +74,7 @@ def fit2d(x0, y0, points, cells, eps,
     Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
     # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    return fit(x0, y0, mesh, Eps, verbose=verbose, solver=solver)
+    return fit(x0, y0, mesh, Eps, degree=degree, verbose=verbose, solver=solver)
 
 
 def _assemble_eigen(form, bc=None):
