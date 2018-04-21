@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 from dolfin import (
-    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
-    grad, dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    PETScMatrix, FacetNormal, ds, Constant, as_tensor
+    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
+    dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
+    FacetNormal, ds, Constant, EigenMatrix
     )
 import numpy
 from scipy import sparse
@@ -48,13 +48,14 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, eps, verbose=False):
+def fit1d(x0, y0, a, b, n, eps, degree=1, verbose=False):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, verbose=verbose)
+    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose)
 
 
-def fit2d(x0, y0, points, cells, eps, verbose=False):
+def fit2d(x0, y0, points, cells, eps,
+          degree=1, verbose=False, solver='spsolve'):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
@@ -71,12 +72,21 @@ def fit2d(x0, y0, points, cells, eps, verbose=False):
     # Eps = numpy.array([[eps, eps], [eps, eps]])
     # Eps = numpy.array([[eps, 0], [0, eps]])
     Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    return fit(x0, y0, mesh, Eps, verbose=verbose)
+    return fit(x0, y0, mesh, Eps, degree=degree, verbose=verbose, solver=solver)
 
 
-def fit(x0, y0, mesh, Eps, verbose=False):
-    V = FunctionSpace(mesh, 'CG', 1)
+def _assemble_eigen(form, bc=None):
+    L = EigenMatrix()
+    assemble(form, tensor=L)
+    if bc is not None:
+        bc.apply(L)
+    return L
+
+
+def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='spsolve'):
+    V = FunctionSpace(mesh, 'CG', degree)
     u = TrialFunction(V)
     v = TestFunction(V)
 
@@ -84,86 +94,88 @@ def fit(x0, y0, mesh, Eps, verbose=False):
 
     dim = mesh.geometry().dim()
 
-    A = []
-    # No need for itertools.product([0, 1], repeat=2) here. The matrices
-    # corresponding to the derivatives xy, yx are equal. TODO perhaps add a
-    # weight?
-    # for i, j in itertools.combinations_with_replacement([0, 1], 2):
-    for i in range(dim):
-        for j in range(dim):
-            L0 = PETScMatrix()
-            assemble(
-                + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
-                # pylint: disable=unsubscriptable-object
-                - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds,
-                tensor=L0
-                )
-            row_ptr, col_indices, data = L0.mat().getValuesCSR()
-            size = L0.mat().getSize()
-            A.append(
-                sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
-                )
-
-    AT = [a.getH() for a in A]
+    A = [
+        _assemble_eigen(
+            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            # pylint: disable=unsubscriptable-object
+            - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
+            ).sparray()
+        for i in range(dim)
+        for j in range(dim)
+        ]
 
     E = _build_eval_matrix(V, x0)
+
+    M = sparse.vstack(A + [E])
+    b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+
+    if solver == 'spsolve':
+        MTM = M.T.dot(M)
+        x = sparse.linalg.spsolve(MTM, M.T.dot(b))
+    elif solver == 'lsqr':
+        x, istop, *_ = sparse.linalg.lsqr(
+            M, b, show=verbose,
+            atol=1.0e-10, btol=1.0e-10,
+            )
+        assert istop == 2, \
+            'sparse.linalg.lsqr not successful (error code {})'.format(istop)
+    elif solver == 'lsmr':
+        x, istop, *_ = sparse.linalg.lsmr(
+            M, b, show=verbose,
+            atol=1.0e-10, btol=1.0e-10,
+            # min(M.shape) is the default
+            maxiter=max(min(M.shape), 10000)
+            )
+        assert istop == 2, \
+            'sparse.linalg.lsmr not successful (error code {})'.format(istop)
+    else:
+        assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
+        A = sparse.linalg.LinearOperator(
+            (M.shape[1], M.shape[1]),
+            matvec=lambda x: M.T.dot(M.dot(x))
+            )
+        x, info = sparse.linalg.gmres(A, M.T.dot(b), tol=1.0e-12)
+        assert info == 0, \
+            'sparse.linalg.gmres not successful (error code {})'.format(info)
+
+    u = Function(V)
+    u.vector().set_local(x)
+    return u
+
+
+def _minimize(V, A, E, ET, y0, verbose):
+    AT = [a.getH() for a in A]
     ET = E.getH()
 
     def f(alpha):
-        A_alpha = [a.dot(alpha) for a in A]
         d = E.dot(alpha) - y0
+        A_alpha = [a.dot(alpha) for a in A]
         return (
-            + 0.5 * sum([numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha])
+            + 0.5 * sum(numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha)
             + 0.5 * numpy.dot(d, d),
             # gradient
-            + sum([at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha)])
+            + sum(at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha))
             + ET.dot(d)
             )
-        # return (
-        #     0.5 * numpy.dot(alpha, A_alpha) + 0.5 * numpy.dot(d, d),
-        #     A_alpha + ET.dot(d)
-        #     )
 
-    assert_equality = False
-    if assert_equality:
-        # The sum of the `A`s is exactly that:
-        Asum = sum(A)
-        L = PETScMatrix()
-        n = FacetNormal(V.mesh())
-        assemble(
-            + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
-            - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
-            tensor=L
-            )
-        row_ptr, col_indices, data = L.mat().getValuesCSR()
-        size = L.mat().getSize()
-        AA = sparse.csr_matrix((data, col_indices, row_ptr), shape=size)
-        assert numpy.all(Asum.indices == AA.indices)
-        assert numpy.all(Asum.indptr == AA.indptr)
-        assert numpy.all(abs(Asum.data - AA.data) < 1.0e-14)
+    # pylint: disable=unused-argument
+    def hessp(x, p):
+        return sum(at.dot(a.dot(p)) for at, a in zip(AT, A)) + ET.dot(E.dot(p))
 
     alpha0 = numpy.zeros(V.dim())
     out = minimize(
         f,
         alpha0,
         jac=True,
-        method='L-BFGS-B',
+        hessp=hessp,
+        # method='L-BFGS-B',
+        method='Newton-CG',
+        tol=1.0e-14
         )
-    assert out.success, 'Optimization not successful.'
     if verbose:
-        print(out.nfev)
-        print(out.fun)
+        print('minimization successful? {}'.format(out.success))
+        print('number of function evals: {}'.format(out.nfev))
+        print('cost functional value: {}'.format(out.fun))
+    assert out.success, 'Optimization not successful.'
 
-    # The least-squares solution is actually less accurate than the minimization
-    # from scipy.optimize import lsq_linear
-    # out = lsq_linear(
-    #     sparse.vstack([A, E]),
-    #     numpy.concatenate([numpy.zeros(A.shape[0]), y0]),
-    #     tol=1e-13
-    #     )
-    # print(out.cost)
-
-    u = Function(V)
-    u.vector().set_local(out.x)
-
-    return u
+    return out.x
