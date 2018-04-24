@@ -5,7 +5,9 @@ from dolfin import (
     dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
     FacetNormal, ds, Constant, EigenMatrix
     )
+import krypy
 import numpy
+import scipy
 from scipy import sparse
 from scipy.optimize import minimize
 
@@ -51,11 +53,14 @@ def _build_eval_matrix(V, points):
 def fit1d(x0, y0, a, b, n, eps, degree=1, verbose=False):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose)
+    return fit(
+        x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose,
+        solver='gmres',
+        )
 
 
 def fit2d(x0, y0, points, cells, eps,
-          degree=1, verbose=False, solver='spsolve'):
+          degree=1, verbose=False, solver='gmres'):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
@@ -83,7 +88,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='spsolve'):
+def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
     V = FunctionSpace(mesh, 'CG', degree)
     u = TrialFunction(V)
     v = TestFunction(V)
@@ -104,37 +109,74 @@ def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='spsolve'):
 
     E = _build_eval_matrix(V, x0)
 
-    M = sparse.vstack(A + [E])
-    b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+    omega = assemble(1 * dx(mesh))
+
+    # mass matrix
+    M = _assemble_eigen(u * v * dx).sparray()
 
     if solver == 'spsolve':
-        MTM = M.T.dot(M)
-        x = sparse.linalg.spsolve(MTM, M.T.dot(b))
-    elif solver == 'lsqr':
-        x, istop, *_ = sparse.linalg.lsqr(
-            M, b, show=verbose,
-            atol=1.0e-10, btol=1.0e-10,
-            )
-        assert istop == 2, \
-            'sparse.linalg.lsqr not successful (error code {})'.format(istop)
-    elif solver == 'lsmr':
-        x, istop, *_ = sparse.linalg.lsmr(
-            M, b, show=verbose,
-            atol=1.0e-10, btol=1.0e-10,
-            # min(M.shape) is the default
-            maxiter=max(min(M.shape), 10000)
-            )
-        assert istop == 2, \
-            'sparse.linalg.lsmr not successful (error code {})'.format(istop)
+        # Minv is dense, yikes!
+        Minv = sparse.linalg.inv(M)
+        BTMinvB = sum(a.T.dot(Minv.dot(a)) for a in A) + E.T.dot(E)
+        # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
+        BTb = E.T.dot(y0)
+        x = sparse.linalg.spsolve(BTMinvB, BTb)
+
+    # Both implementations of LSQR and LSMR can only be used with the standard
+    # l_2 inner product. This is not sufficient here: We need the M inner
+    # product to make sure that the discrete residual is an approximation to
+    # the inner product of the continuous problem.
+    #
+    # elif solver == 'lsqr':
+    #     B = sparse.vstack(A + [E])
+    #     b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+    #     x, istop, *_ = sparse.linalg.lsqr(
+    #         B, b, show=verbose,
+    #         atol=1.0e-10, btol=1.0e-10,
+    #         )
+    #     assert istop == 2, \
+    #         'sparse.linalg.lsqr not successful (error code {})'.format(istop)
+
+    # elif solver == 'lsmr':
+    #     B = sparse.vstack(A + [E])
+    #     b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+    #     x, istop, *_ = sparse.linalg.lsmr(
+    #         B, b, show=verbose,
+    #         atol=1.0e-10, btol=1.0e-10,
+    #         # min(M.shape) is the default
+    #         maxiter=max(min(M.shape), 10000)
+    #         )
+    #     assert istop == 2, \
+    #         'sparse.linalg.lsmr not successful (error code {})'.format(istop)
+
     else:
         assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
-        A = sparse.linalg.LinearOperator(
-            (M.shape[1], M.shape[1]),
-            matvec=lambda x: M.T.dot(M.dot(x))
+
+        def matvec(x):
+            # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
+            # or algebraic multigrid.
+            s = sum([a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A])
+            # https://github.com/scipy/scipy/issues/8772
+            s = s.reshape(x.shape)
+            return s + E.T.dot(E.dot(x))
+
+        matrix = sparse.linalg.LinearOperator(
+            (E.shape[1], E.shape[1]),
+            # matvec=lambda x: B.T.dot(B.dot(x))
+            matvec=matvec
             )
-        x, info = sparse.linalg.gmres(A, M.T.dot(b), tol=1.0e-12)
-        assert info == 0, \
-            'sparse.linalg.gmres not successful (error code {})'.format(info)
+
+        # b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+        BTb = E.T.dot(y0)
+
+        # Scipy's own GMRES.
+        # x, info = sparse.linalg.gmres(matrix, BTb, tol=1.0e-12)
+        # assert info == 0, \
+        #     'sparse.linalg.gmres not successful (error code {})'.format(info)
+
+        linsys = krypy.linsys.LinearSystem(matrix, BTb)
+        out = krypy.linsys.Gmres(linsys, tol=1.0e-10)
+        x = out.xk
 
     u = Function(V)
     u.vector().set_local(x)

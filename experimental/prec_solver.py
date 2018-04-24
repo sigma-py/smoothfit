@@ -91,7 +91,6 @@ def solve(M, b, mesh, Eps):
         DirichletBC(V, Constant(0.0), lower_right, method='pointwise'),
         ]
 
-    # TODO THIS IS IT
     AA2 = _assemble_eigen(
         + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
         - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
