@@ -94,7 +94,7 @@ def test_1d_scale():
 
 
 @pytest.mark.parametrize(
-    'solver', ['spsolve', 'gmres']
+    'solver', ['dense', 'gmres']
     )
 def test_2d(solver):
     n = 200
@@ -132,7 +132,6 @@ def test_2d(solver):
 
 if __name__ == '__main__':
     # test_1d_show()
-    # test_2d('spsolve')
-    # test_2d('lsmr')
+    # test_2d('dense')
     test_2d('gmres')
     # test_1d_scale()

@@ -114,10 +114,13 @@ def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    if solver == 'spsolve':
+    if solver == 'dense':
         # Minv is dense, yikes!
-        Minv = sparse.linalg.inv(M)
-        BTMinvB = sum(a.T.dot(Minv.dot(a)) for a in A) + E.T.dot(E)
+        M = M.toarray()
+        BTMinvB = sum(
+            numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray()))
+            for a in A
+            ) + E.T.dot(E)
         # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
         BTb = E.T.dot(y0)
         x = sparse.linalg.spsolve(BTMinvB, BTb)
@@ -155,9 +158,10 @@ def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
         def matvec(x):
             # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
             # or algebraic multigrid.
-            s = sum([a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A])
-            # https://github.com/scipy/scipy/issues/8772
-            s = s.reshape(x.shape)
+            # Reshape for <https://github.com/scipy/scipy/issues/8772>.
+            s = sum(
+                [a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A]
+                ).reshape(x.shape)
             return s + E.T.dot(E.dot(x))
 
         matrix = sparse.linalg.LinearOperator(
@@ -170,7 +174,7 @@ def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
         BTb = E.T.dot(y0)
 
         # Scipy's own GMRES.
-        # x, info = sparse.linalg.gmres(matrix, BTb, tol=1.0e-12)
+        # x, info = sparse.linalg.gmres(matrix, BTb, tol=1.0e-10)
         # assert info == 0, \
         #     'sparse.linalg.gmres not successful (error code {})'.format(info)
 
