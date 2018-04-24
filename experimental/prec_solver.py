@@ -184,3 +184,7 @@ def solve(M, b, mesh, Eps):
     # plt.show()
 
     return out.xk
+
+
+if __name__ == '__main__':
+    dla

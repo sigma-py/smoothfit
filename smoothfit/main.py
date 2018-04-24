@@ -5,11 +5,10 @@ from dolfin import (
     dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
     FacetNormal, ds, Constant, EigenMatrix
     )
-import krypy
 import numpy
-import scipy
 from scipy import sparse
-from scipy.optimize import minimize
+from scipy.sparse import linalg
+import krypy
 
 
 def _build_eval_matrix(V, points):
@@ -50,17 +49,17 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, eps, degree=1, verbose=False):
+def fit1d(x0, y0, a, b, n, eps, degree=1):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
     return fit(
-        x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose,
+        x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree,
         solver='gmres',
         )
 
 
 def fit2d(x0, y0, points, cells, eps,
-          degree=1, verbose=False, solver='gmres'):
+          degree=1, solver='gmres'):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
@@ -79,7 +78,7 @@ def fit2d(x0, y0, points, cells, eps,
     Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
     # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    return fit(x0, y0, mesh, Eps, degree=degree, verbose=verbose, solver=solver)
+    return fit(x0, y0, mesh, Eps, degree=degree, solver=solver)
 
 
 def _assemble_eigen(form):
@@ -88,7 +87,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
+def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
     V = FunctionSpace(mesh, 'CG', degree)
     u = TrialFunction(V)
     v = TestFunction(V)
@@ -109,7 +108,7 @@ def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='gmres'):
 
     E = _build_eval_matrix(V, x0)
 
-    omega = assemble(1 * dx(mesh))
+    # omega = assemble(1 * dx(mesh))
 
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()

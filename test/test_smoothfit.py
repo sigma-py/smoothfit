@@ -116,9 +116,7 @@ def test_2d(solver):
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    u = smoothfit.fit2d(
-        x0, y0, points, cells, eps=1.0e-2, verbose=True, solver=solver
-        )
+    u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-2, solver=solver)
 
     ref = 4.4112141557993105
     val = assemble(u*u * dx)
