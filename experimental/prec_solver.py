@@ -27,6 +27,11 @@ def _assemble_eigen(form, bcs=None):
     return L
 
 
+def _spsolve(A, b):
+    # Reshape for <https://github.com/scipy/scipy/issues/8772>.
+    return sparse.linalg.spsolve(A, b).reshape(b.shape)
+
+
 def solve(mesh, Eps, degree):
     V = FunctionSpace(mesh, 'CG', degree)
     u = TrialFunction(V)
@@ -105,8 +110,8 @@ def solve(mesh, Eps, degree):
     AA2 = _assemble_eigen(
         + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
         - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
-        # bcs=[DirichletBC(V, Constant(0.0), 'on_boundary')]
-        bcs=bcs
+        bcs=[DirichletBC(V, Constant(0.0), 'on_boundary')]
+        # bcs=bcs
         # bcs=[
         #     DirichletBC(V, Constant(0.0), lower),
         #     DirichletBC(V, Constant(0.0), right),
@@ -116,9 +121,9 @@ def solve(mesh, Eps, degree):
     ATA2 = AA2.T.dot(numpy.linalg.solve(M.toarray(), AA2.toarray()))
 
     # Eigenvalues of the operators
-    if True:
+    if False:
         ATMinvAsum_eigs = numpy.sort(numpy.linalg.eigvalsh(ATMinvAsum))
-        ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2))
+        ATA2_eigs = numpy.sort(numpy.linalg.eigvals(ATA2))
         # print(ATA2_eigs[:20])
         # exit(1)
         plt.semilogy(ATMinvAsum_eigs, '.', label='ATMinvAsum')
@@ -127,14 +132,13 @@ def solve(mesh, Eps, degree):
         plt.show()
 
     # Preconditioned eigenvalues
-    if True:
+    if False:
         IATA_eigs = numpy.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
         plt.semilogy(IATA_eigs, '.', label='precond eigenvalues')
         plt.legend()
         plt.show()
 
     # # Test with A only
-    # M = sparse.vstack(A)
     # numpy.random.seed(123)
     # b = numpy.random.rand(sum(a.shape[0] for a in A))
     # MTM = M.T.dot(M)
@@ -150,6 +154,26 @@ def solve(mesh, Eps, degree):
     # plt.show()
     # exit(1)
 
+    n = AA2.shape[0]
+
+    # define the operator
+    def matvec(x):
+        # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
+        # or algebraic multigrid.
+        # return sum([a.T.dot(a.dot(x)) for a in A])
+        return numpy.sum([a.T.dot(_spsolve(M, a.dot(x))) for a in A], axis=0)
+    op = sparse.linalg.LinearOperator((n, n), matvec=matvec)
+
+    # pick a random solution and a consistent rhs
+    x = numpy.random.rand(n)
+    b = op.dot(x)
+
+    linear_system = krypy.linsys.LinearSystem(op, b)
+    print('unpreconditioned solve...')
+    out = krypy.linsys.Gmres(linear_system, tol=1.0e-12)
+    print('done.')
+
+    # preconditioned solver
     ml = pyamg.smoothed_aggregation_solver(AA2)
     # res = []
     # b = numpy.random.rand(AA2.shape[0])
@@ -167,51 +191,53 @@ def solve(mesh, Eps, degree):
 
     # print(res)
     def prec_matvec(b):
-        n = len(b)
         x0 = numpy.zeros(n)
         b1 = mlT.solve(b, x0, tol=1.0e-12)
-        x = ml.solve(b1, x0, tol=1.0e-12)
+        b2 = M.dot(b1)
+        x = ml.solve(b2, x0, tol=1.0e-12)
         return x
-    n = AA2.shape[0]
     prec = LinearOperator((n, n), matvec=prec_matvec)
 
     # TODO assert this in a test
     # x = prec_matvec(b)
     # print(b - AA2.T.dot(AA2.dot(x)))
 
-    MTM = sparse.linalg.LinearOperator(
-        (M.shape[1], M.shape[1]),
-        matvec=lambda x: M.T.dot(M.dot(x))
-        )
+    linear_system = krypy.linsys.LinearSystem(op, b, M=prec)
+    print('preconditioned solve...')
+    try:
+        out_prec = krypy.linsys.Gmres(linear_system, tol=1.0e-12, maxiter=100)
+    except krypy.utils.ConvergenceError:
+        print('prec not converged!')
+        pass
+    print('done.')
 
-    linear_system = krypy.linsys.LinearSystem(MTM, M.T.dot(b), M=prec)
-    out = krypy.linsys.Gmres(linear_system, tol=1.0e-12)
-
-    plt.semilogy(out.resnorms)
+    plt.semilogy(out.resnorms, label='original')
+    plt.semilogy(out_prec.resnorms, label='preconditioned')
+    plt.legend()
     plt.show()
 
     return out.xk
 
 
 if __name__ == '__main__':
-    # # 1d mesh
-    # mesh = IntervalMesh(20, -1.0, +1.0)
-    # Eps = numpy.array([[1.0]])
+    # 1d mesh
+    mesh = IntervalMesh(300, -1.0, +1.0)
+    Eps = numpy.array([[1.0]])
 
-    # 2d mesh
-    import meshzoo
-    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 20, 20)
-    editor = MeshEditor()
-    mesh = Mesh()
-    # topological and geometrical dimension 2
-    editor.open(mesh, 'triangle', 2, 2, 1)
-    editor.init_vertices(len(points))
-    editor.init_cells(len(cells))
-    for k, point in enumerate(points):
-        editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(numpy.uintp)):
-        editor.add_cell(k, cell)
-    editor.close()
-    Eps = numpy.array([[2.0, 1.0], [1.0, 2.0]])
+    # # 2d mesh
+    # import meshzoo
+    # points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 20, 20)
+    # editor = MeshEditor()
+    # mesh = Mesh()
+    # # topological and geometrical dimension 2
+    # editor.open(mesh, 'triangle', 2, 2, 1)
+    # editor.init_vertices(len(points))
+    # editor.init_cells(len(cells))
+    # for k, point in enumerate(points):
+    #     editor.add_vertex(k, point[:2])
+    # for k, cell in enumerate(cells.astype(numpy.uintp)):
+    #     editor.add_cell(k, cell)
+    # editor.close()
+    # Eps = numpy.array([[2.0, 1.0], [1.0, 2.0]])
 
     solve(mesh, Eps, degree=1)
