@@ -129,7 +129,7 @@ def test_2d(solver):
 
 
 if __name__ == '__main__':
-    # test_1d_show()
+    test_1d_show()
     # test_2d('dense')
-    test_2d('gmres')
+    # test_2d('gmres')
     # test_1d_scale()

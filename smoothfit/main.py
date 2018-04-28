@@ -3,11 +3,13 @@
 from dolfin import (
     IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
     dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    FacetNormal, ds, Constant, EigenMatrix
+    FacetNormal, ds, Constant, EigenMatrix, dot, as_tensor, grad
     )
 import numpy
+import pyamg
 from scipy import sparse
 from scipy.sparse import linalg
+from scipy.sparse.linalg import LinearOperator
 import krypy
 
 
@@ -52,9 +54,16 @@ def _build_eval_matrix(V, points):
 def fit1d(x0, y0, a, b, n, eps, degree=1):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
+    V = FunctionSpace(mesh, 'CG', degree)
+
+    # Find the indices corresponding to the end points
+    dofs_x = V.tabulate_dof_coordinates()
+    i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0]
+    i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0]
+
     return fit(
-        x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree,
-        solver='gmres',
+        x0[:, numpy.newaxis], y0, V, Eps,
+        solver='gmres', prec_dirichlet_indices=[i0, i1]
         )
 
 
@@ -78,7 +87,8 @@ def fit2d(x0, y0, points, cells, eps,
     Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
     # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    return fit(x0, y0, mesh, Eps, degree=degree, solver=solver)
+    V = FunctionSpace(mesh, 'CG', degree)
+    return fit(x0, y0, V, Eps, solver=solver)
 
 
 def _assemble_eigen(form):
@@ -87,14 +97,14 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
-    V = FunctionSpace(mesh, 'CG', degree)
+def fit(x0, y0, V, Eps, solver='gmres', prec_dirichlet_indices=None):
     u = TrialFunction(V)
     v = TestFunction(V)
 
+    mesh = V.mesh()
     n = FacetNormal(mesh)
 
-    dim = mesh.geometry().dim()
+    gdim = mesh.geometry().dim()
 
     A = [
         _assemble_eigen(
@@ -102,8 +112,8 @@ def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
             # pylint: disable=unsubscriptable-object
             - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
             ).sparray()
-        for i in range(dim)
-        for j in range(dim)
+        for i in range(gdim)
+        for j in range(gdim)
         ]
 
     E = _build_eval_matrix(V, x0)
@@ -113,6 +123,10 @@ def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
+    # Scipy implementations of both LSQR and LSMR can only be used with the
+    # standard l_2 inner product. This is not sufficient here: We need the M
+    # inner product to make sure that the discrete residual is an approximation
+    # to the inner product of the continuous problem.
     if solver == 'dense':
         # Minv is dense, yikes!
         M = M.toarray()
@@ -123,33 +137,6 @@ def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
         # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
         BTb = E.T.dot(y0)
         x = sparse.linalg.spsolve(BTMinvB, BTb)
-
-    # Both implementations of LSQR and LSMR can only be used with the standard
-    # l_2 inner product. This is not sufficient here: We need the M inner
-    # product to make sure that the discrete residual is an approximation to
-    # the inner product of the continuous problem.
-    #
-    # elif solver == 'lsqr':
-    #     B = sparse.vstack(A + [E])
-    #     b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
-    #     x, istop, *_ = sparse.linalg.lsqr(
-    #         B, b, show=verbose,
-    #         atol=1.0e-10, btol=1.0e-10,
-    #         )
-    #     assert istop == 2, \
-    #         'sparse.linalg.lsqr not successful (error code {})'.format(istop)
-
-    # elif solver == 'lsmr':
-    #     B = sparse.vstack(A + [E])
-    #     b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
-    #     x, istop, *_ = sparse.linalg.lsmr(
-    #         B, b, show=verbose,
-    #         atol=1.0e-10, btol=1.0e-10,
-    #         # min(M.shape) is the default
-    #         maxiter=max(min(M.shape), 10000)
-    #         )
-    #     assert istop == 2, \
-    #         'sparse.linalg.lsmr not successful (error code {})'.format(istop)
 
     else:
         assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
@@ -169,6 +156,43 @@ def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
             matvec=matvec
             )
 
+        if prec_dirichlet_indices:
+            # As preconditioner for `A^T M^{-1} A`, `ML(B) M ML(B.T)` where ML
+            # is a multigrid solve and B is the weak form of `-\Delta u` with
+            # Dirichlet conditions in only a few points, chosen such that B is
+            # nonsingular. (Exactly how these points have to be chosen is still
+            # a matter of research, see
+            # <https://scicomp.stackexchange.com/q/29403/3980>.)
+            # B approximates A quite well, especially if the domain is
+            # polygonal and the indices are the corners of the polygon.
+
+            # Weak form of `-Delta u` without boundary conditions.
+            Aprec = _assemble_eigen(
+                + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+                - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
+                ).sparray()
+            # Add Dirichlet conditions at a few points
+            Aprec = Aprec.tolil()
+            for k in prec_dirichlet_indices:
+                Aprec[k] = 0
+                Aprec[k, k] = 1
+            n = Aprec.shape[0]
+            Aprec = Aprec.tocsr()
+
+            ml = pyamg.smoothed_aggregation_solver(Aprec)
+            mlT = pyamg.smoothed_aggregation_solver(Aprec.T.tocsr())
+
+            def prec_matvec(b):
+                x0 = numpy.zeros(n)
+                b1 = mlT.solve(b, x0, tol=1.0e-12)
+                b2 = M.dot(b1)
+                x = ml.solve(b2, x0, tol=1.0e-12)
+                return x
+            prec = LinearOperator((n, n), matvec=prec_matvec)
+
+        else:
+            prec = None
+
         # b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
         BTb = E.T.dot(y0)
 
@@ -177,8 +201,9 @@ def fit(x0, y0, mesh, Eps, degree=1, solver='gmres'):
         # assert info == 0, \
         #     'sparse.linalg.gmres not successful (error code {})'.format(info)
 
-        linsys = krypy.linsys.LinearSystem(matrix, BTb)
+        linsys = krypy.linsys.LinearSystem(matrix, BTb, M=prec)
         out = krypy.linsys.Gmres(linsys, tol=1.0e-10)
+        print(len(out.resnorms))
         x = out.xk
 
     u = Function(V)
