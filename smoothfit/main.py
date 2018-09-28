@@ -1,10 +1,26 @@
 # -*- coding: utf-8 -*-
 #
 from dolfin import (
-    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
-    dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    FacetNormal, ds, Constant, EigenMatrix, dot, as_tensor, grad
-    )
+    IntervalMesh,
+    FunctionSpace,
+    TrialFunction,
+    TestFunction,
+    assemble,
+    dx,
+    BoundingBoxTree,
+    Point,
+    Cell,
+    MeshEditor,
+    Mesh,
+    Function,
+    FacetNormal,
+    ds,
+    Constant,
+    EigenMatrix,
+    dot,
+    as_tensor,
+    grad,
+)
 import numpy
 import pyamg
 from scipy import sparse
@@ -13,9 +29,9 @@ import krypy
 
 
 def _build_eval_matrix(V, points):
-    '''Build the sparse m-by-n matrix that maps a coefficient set for a
+    """Build the sparse m-by-n matrix that maps a coefficient set for a
     function in V to the values of that function at m given points.
-    '''
+    """
     # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
     mesh = V.mesh()
 
@@ -52,35 +68,34 @@ def _build_eval_matrix(V, points):
 def fit1d(x0, y0, a, b, n, eps, degree=1):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    V = FunctionSpace(mesh, 'CG', degree)
+    V = FunctionSpace(mesh, "CG", degree)
 
     # Find the indices corresponding to the end points
     dofs_x = V.tabulate_dof_coordinates()
     i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0][0]
     i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0][0]
 
-    return fit(
-        x0[:, numpy.newaxis], y0, V, Eps,
-        prec_dirichlet_indices=[i0, i1]
-        )
+    return fit(x0[:, numpy.newaxis], y0, V, Eps, prec_dirichlet_indices=[i0, i1])
 
 
 # def fit_triangle(x0, y0, corners, eps):
 #     return
 
+
 def fit_polygon(x0, y0, eps, corners, char_length):
     # Create the mesh with pygmsh
     import pygmsh
+
     geom = pygmsh.built_in.Geometry()
     corners3d = numpy.column_stack([corners, numpy.zeros(len(corners))])
     geom.add_polygon(corners3d, lcar=char_length)
     points, cells, _, _, _ = pygmsh.generate_mesh(geom)
-    cells = cells['triangle']
+    cells = cells["triangle"]
 
     editor = MeshEditor()
     mesh = Mesh()
     # topological and geometrical dimension 2
-    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.open(mesh, "triangle", 2, 2, 1)
     editor.init_vertices(len(points))
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
@@ -91,7 +106,7 @@ def fit_polygon(x0, y0, eps, corners, char_length):
 
     # Only allow degree 1 for now. It's unclear how many Dirichlet points are
     # needed to make the preconditioning operator positive definite.
-    V = FunctionSpace(mesh, 'CG', 1)
+    V = FunctionSpace(mesh, "CG", 1)
 
     # Find the indices corresponding to the corners
     gdim = mesh.geometry().dim()
@@ -99,20 +114,19 @@ def fit_polygon(x0, y0, eps, corners, char_length):
     i = []
     for corner in corners:
         diff = dofs_x - corner
-        norm_diff = numpy.einsum('ij, ij->i', diff, diff)
+        norm_diff = numpy.einsum("ij, ij->i", diff, diff)
         i.append(numpy.where(abs(norm_diff) < 1.0e-15)[0][0])
 
-    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    Eps = numpy.array([[2 * eps, eps], [eps, 2 * eps]])
     return fit(x0, y0, V, Eps, prec_dirichlet_indices=None)
 
 
-def fit2d(x0, y0, points, cells, eps,
-          degree=1, solver='gmres'):
+def fit2d(x0, y0, points, cells, eps, degree=1, solver="gmres"):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
     # topological and geometrical dimension 2
-    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.open(mesh, "triangle", 2, 2, 1)
     editor.init_vertices(len(points))
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
@@ -123,10 +137,10 @@ def fit2d(x0, y0, points, cells, eps,
 
     # Eps = numpy.array([[eps, eps], [eps, eps]])
     # Eps = numpy.array([[eps, 0], [0, eps]])
-    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    Eps = numpy.array([[2 * eps, eps], [eps, 2 * eps]])
     # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    V = FunctionSpace(mesh, 'CG', degree)
+    V = FunctionSpace(mesh, "CG", degree)
     return fit(x0, y0, V, Eps, solver=solver)
 
 
@@ -136,7 +150,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
+def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
     u = TrialFunction(V)
     v = TestFunction(V)
 
@@ -147,13 +161,13 @@ def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
 
     A = [
         _assemble_eigen(
-            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
             # pylint: disable=unsubscriptable-object
             - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
-            ).sparray()
+        ).sparray()
         for i in range(gdim)
         for j in range(gdim)
-        ]
+    ]
 
     E = _build_eval_matrix(V, x0)
 
@@ -166,34 +180,33 @@ def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
     # standard l_2 inner product. This is not sufficient here: We need the M
     # inner product to make sure that the discrete residual is an approximation
     # to the inner product of the continuous problem.
-    if solver == 'dense':
+    if solver == "dense":
         # Minv is dense, yikes!
         M = M.toarray()
         BTMinvB = sum(
-            numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray()))
-            for a in A
-            ) + E.T.dot(E)
+            numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray())) for a in A
+        ) + E.T.dot(E)
         # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
         BTb = E.T.dot(y0)
         x = sparse.linalg.spsolve(BTMinvB, BTb)
 
     else:
-        assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
+        assert solver == "gmres", "Unknown solver '{}'.".format(solver)
 
         def matvec(x):
             # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
             # or algebraic multigrid.
             # Reshape for <https://github.com/scipy/scipy/issues/8772>.
-            s = sum(
-                [a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A]
-                ).reshape(x.shape)
+            s = sum([a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A]).reshape(
+                x.shape
+            )
             return s + E.T.dot(E.dot(x))
 
         matrix = sparse.linalg.LinearOperator(
             (E.shape[1], E.shape[1]),
             # matvec=lambda x: B.T.dot(B.dot(x))
-            matvec=matvec
-            )
+            matvec=matvec,
+        )
 
         if prec_dirichlet_indices:
             # As preconditioner for `A^T M^{-1} A`, `ML(B) M ML(B.T)` where ML
@@ -207,9 +220,9 @@ def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
 
             # Weak form of `-Delta u` without boundary conditions.
             Aprec = _assemble_eigen(
-                + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+                +dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
                 - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
-                ).sparray()
+            ).sparray()
             # Add Dirichlet conditions at a few points
             Aprec = Aprec.tolil()
             for k in prec_dirichlet_indices:
@@ -227,6 +240,7 @@ def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
                 b2 = M.dot(b1)
                 x = ml.solve(b2, x0, tol=1.0e-12)
                 return x
+
             prec = LinearOperator((n, n), matvec=prec_matvec)
 
         else:
