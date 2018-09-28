@@ -29,7 +29,7 @@ setup(
     url="https://github.com/nschloe/smoothfit",
     license=about["__license__"],
     platforms="any",
-    install_requires=["numpy", "pipdate", "scipy"],
+    install_requires=["numpy", "pyamg", "scipy"],
     extras_require={"all": ["pygmsh"], "meshgen": ["pygmsh"]},
     classifiers=[
         about["__status__"],
