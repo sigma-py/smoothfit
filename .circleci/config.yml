@@ -5,15 +5,17 @@ jobs:
   build:
     working_directory: ~/work
     docker:
-      - image: ubuntu:18.04
+      - image: ubuntu:18.10
     steps:
       - run: apt-get update
       - run: apt-get install -y python3-pip python3-dolfin
-      - run: pip3 install -U pytest pytest-cov pylint
+      - run: pip3 install -U pytest pytest-cov black flake8
       - checkout
       - run: pip3 install .
       - run: pip3 install -r test_requirements.txt
-      - run: pylint setup.py smoothfit/ test/*.py
+      # lint
+      - run: LC_ALL=C.UTF-8 black --check setup.py smoothfit/ test/*.py
+      - run: flake8 setup.py smoothfit/ test/*.py
       # The actual test
       # For some reason ssh is needed; probably dolfin parallel?
       - run: apt install -y ssh

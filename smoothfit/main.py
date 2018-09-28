@@ -1,19 +1,37 @@
 # -*- coding: utf-8 -*-
 #
 from dolfin import (
-    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble,
-    dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    FacetNormal, ds, Constant, EigenMatrix
-    )
+    IntervalMesh,
+    FunctionSpace,
+    TrialFunction,
+    TestFunction,
+    assemble,
+    dx,
+    BoundingBoxTree,
+    Point,
+    Cell,
+    MeshEditor,
+    Mesh,
+    Function,
+    FacetNormal,
+    ds,
+    Constant,
+    EigenMatrix,
+    dot,
+    as_tensor,
+    grad,
+)
 import numpy
+import pyamg
 from scipy import sparse
-from scipy.optimize import minimize
+from scipy.sparse.linalg import LinearOperator
+import pykry
 
 
 def _build_eval_matrix(V, points):
-    '''Build the sparse m-by-n matrix that maps a coefficient set for a
+    """Build the sparse m-by-n matrix that maps a coefficient set for a
     function in V to the values of that function at m given points.
-    '''
+    """
     # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
     mesh = V.mesh()
 
@@ -34,8 +52,7 @@ def _build_eval_matrix(V, points):
         rows.append(numpy.full(sdim, i))
         cols.append(dofmap.cell_dofs(cell_id))
 
-        v = numpy.empty(sdim, dtype=float)
-        el.evaluate_basis_all(v, x, coordinate_dofs, cell_id)
+        v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
         data.append(v)
 
     rows = numpy.concatenate(rows)
@@ -48,19 +65,68 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, eps, degree=1, verbose=False):
+def fit1d(x0, y0, a, b, n, eps, degree=1):
     mesh = IntervalMesh(n, a, b)
     Eps = numpy.array([[eps]])
-    return fit(x0[:, numpy.newaxis], y0, mesh, Eps, degree=degree, verbose=verbose)
+    V = FunctionSpace(mesh, "CG", degree)
+
+    # Find the indices corresponding to the end points
+    dofs_x = V.tabulate_dof_coordinates()
+    i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0][0]
+    i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0][0]
+
+    return fit(x0[:, numpy.newaxis], y0, V, Eps, prec_dirichlet_indices=[i0, i1])
 
 
-def fit2d(x0, y0, points, cells, eps,
-          degree=1, verbose=False, solver='spsolve'):
+# def fit_triangle(x0, y0, corners, eps):
+#     return
+
+
+def fit_polygon(x0, y0, eps, corners, char_length):
+    # Create the mesh with pygmsh
+    import pygmsh
+
+    geom = pygmsh.built_in.Geometry()
+    corners3d = numpy.column_stack([corners, numpy.zeros(len(corners))])
+    geom.add_polygon(corners3d, lcar=char_length)
+    points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    cells = cells["triangle"]
+
+    editor = MeshEditor()
+    mesh = Mesh()
+    # topological and geometrical dimension 2
+    editor.open(mesh, "triangle", 2, 2, 1)
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point[:2])
+    for k, cell in enumerate(cells.astype(numpy.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+
+    # Only allow degree 1 for now. It's unclear how many Dirichlet points are
+    # needed to make the preconditioning operator positive definite.
+    V = FunctionSpace(mesh, "CG", 1)
+
+    # Find the indices corresponding to the corners
+    gdim = mesh.geometry().dim()
+    dofs_x = V.tabulate_dof_coordinates().reshape(-1, gdim)
+    i = []
+    for corner in corners:
+        diff = dofs_x - corner
+        norm_diff = numpy.einsum("ij, ij->i", diff, diff)
+        i.append(numpy.where(abs(norm_diff) < 1.0e-15)[0][0])
+
+    Eps = numpy.array([[2 * eps, eps], [eps, 2 * eps]])
+    return fit(x0, y0, V, Eps, prec_dirichlet_indices=None)
+
+
+def fit2d(x0, y0, points, cells, eps, degree=1, solver="gmres"):
     # Convert points, cells to dolfin mesh
     editor = MeshEditor()
     mesh = Mesh()
     # topological and geometrical dimension 2
-    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.open(mesh, "triangle", 2, 2, 1)
     editor.init_vertices(len(points))
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
@@ -71,111 +137,127 @@ def fit2d(x0, y0, points, cells, eps,
 
     # Eps = numpy.array([[eps, eps], [eps, eps]])
     # Eps = numpy.array([[eps, 0], [0, eps]])
-    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    Eps = numpy.array([[2 * eps, eps], [eps, 2 * eps]])
     # Eps = numpy.array([[1.0, 1.0], [1.0, 1.0]])
 
-    return fit(x0, y0, mesh, Eps, degree=degree, verbose=verbose, solver=solver)
+    V = FunctionSpace(mesh, "CG", degree)
+    return fit(x0, y0, V, Eps, solver=solver)
 
 
-def _assemble_eigen(form, bc=None):
+def _assemble_eigen(form):
     L = EigenMatrix()
     assemble(form, tensor=L)
-    if bc is not None:
-        bc.apply(L)
     return L
 
 
-def fit(x0, y0, mesh, Eps, degree=1, verbose=False, solver='spsolve'):
-    V = FunctionSpace(mesh, 'CG', degree)
+def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
     u = TrialFunction(V)
     v = TestFunction(V)
 
+    mesh = V.mesh()
     n = FacetNormal(mesh)
 
-    dim = mesh.geometry().dim()
+    gdim = mesh.geometry().dim()
 
     A = [
         _assemble_eigen(
-            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
             # pylint: disable=unsubscriptable-object
             - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
-            ).sparray()
-        for i in range(dim)
-        for j in range(dim)
-        ]
+        ).sparray()
+        for i in range(gdim)
+        for j in range(gdim)
+    ]
 
     E = _build_eval_matrix(V, x0)
 
-    M = sparse.vstack(A + [E])
-    b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+    # omega = assemble(1 * dx(mesh))
 
-    if solver == 'spsolve':
-        MTM = M.T.dot(M)
-        x = sparse.linalg.spsolve(MTM, M.T.dot(b))
-    elif solver == 'lsqr':
-        x, istop, *_ = sparse.linalg.lsqr(
-            M, b, show=verbose,
-            atol=1.0e-10, btol=1.0e-10,
-            )
-        assert istop == 2, \
-            'sparse.linalg.lsqr not successful (error code {})'.format(istop)
-    elif solver == 'lsmr':
-        x, istop, *_ = sparse.linalg.lsmr(
-            M, b, show=verbose,
-            atol=1.0e-10, btol=1.0e-10,
-            # min(M.shape) is the default
-            maxiter=max(min(M.shape), 10000)
-            )
-        assert istop == 2, \
-            'sparse.linalg.lsmr not successful (error code {})'.format(istop)
+    # mass matrix
+    M = _assemble_eigen(u * v * dx).sparray()
+
+    # Scipy implementations of both LSQR and LSMR can only be used with the
+    # standard l_2 inner product. This is not sufficient here: We need the M
+    # inner product to make sure that the discrete residual is an approximation
+    # to the inner product of the continuous problem.
+    if solver == "dense":
+        # Minv is dense, yikes!
+        M = M.toarray()
+        BTMinvB = sum(
+            numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray())) for a in A
+        ) + E.T.dot(E)
+        # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
+        BTb = E.T.dot(y0)
+        x = sparse.linalg.spsolve(BTMinvB, BTb)
+
     else:
-        assert solver == 'gmres', 'Unknown solver \'{}\'.'.format(solver)
-        A = sparse.linalg.LinearOperator(
-            (M.shape[1], M.shape[1]),
-            matvec=lambda x: M.T.dot(M.dot(x))
+        assert solver == "gmres", "Unknown solver '{}'.".format(solver)
+
+        def matvec(x):
+            # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
+            # or algebraic multigrid.
+            # Reshape for <https://github.com/scipy/scipy/issues/8772>.
+            s = sum([a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A]).reshape(
+                x.shape
             )
-        x, info = sparse.linalg.gmres(A, M.T.dot(b), tol=1.0e-12)
-        assert info == 0, \
-            'sparse.linalg.gmres not successful (error code {})'.format(info)
+            return s + E.T.dot(E.dot(x))
+
+        matrix = sparse.linalg.LinearOperator(
+            (E.shape[1], E.shape[1]),
+            # matvec=lambda x: B.T.dot(B.dot(x))
+            matvec=matvec,
+        )
+
+        if prec_dirichlet_indices:
+            # As preconditioner for `A^T M^{-1} A`, `ML(B) M ML(B.T)` where ML
+            # is a multigrid solve and B is the weak form of `-\Delta u` with
+            # Dirichlet conditions in only a few points, chosen such that B is
+            # nonsingular. (Exactly how these points have to be chosen is still
+            # a matter of research, see
+            # <https://scicomp.stackexchange.com/q/29403/3980>.)
+            # B approximates A quite well, especially if the domain is
+            # polygonal and the indices are the corners of the polygon.
+
+            # Weak form of `-Delta u` without boundary conditions.
+            Aprec = _assemble_eigen(
+                +dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+                - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
+            ).sparray()
+            # Add Dirichlet conditions at a few points
+            Aprec = Aprec.tolil()
+            for k in prec_dirichlet_indices:
+                Aprec[k] = 0
+                Aprec[k, k] = 1
+            n = Aprec.shape[0]
+            Aprec = Aprec.tocsr()
+
+            ml = pyamg.smoothed_aggregation_solver(Aprec)
+            mlT = pyamg.smoothed_aggregation_solver(Aprec.T.tocsr())
+
+            def prec_matvec(b):
+                x0 = numpy.zeros(n)
+                b1 = mlT.solve(b, x0, tol=1.0e-12)
+                b2 = M.dot(b1)
+                x = ml.solve(b2, x0, tol=1.0e-12)
+                return x
+
+            prec = LinearOperator((n, n), matvec=prec_matvec)
+
+        else:
+            prec = None
+
+        # b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
+        BTb = E.T.dot(y0)
+
+        # Scipy's own GMRES.
+        # x, info = sparse.linalg.gmres(matrix, BTb, tol=1.0e-10)
+        # assert info == 0, \
+        #     'sparse.linalg.gmres not successful (error code {})'.format(info)
+
+        out = pykry.gmres(matrix, BTb, M=prec, tol=1.0e-10)
+        print(len(out.resnorms))
+        x = out.xk
 
     u = Function(V)
     u.vector().set_local(x)
     return u
-
-
-def _minimize(V, A, E, ET, y0, verbose):
-    AT = [a.getH() for a in A]
-    ET = E.getH()
-
-    def f(alpha):
-        d = E.dot(alpha) - y0
-        A_alpha = [a.dot(alpha) for a in A]
-        return (
-            + 0.5 * sum(numpy.dot(a_alpha, a_alpha) for a_alpha in A_alpha)
-            + 0.5 * numpy.dot(d, d),
-            # gradient
-            + sum(at.dot(a_alpha) for at, a_alpha in zip(AT, A_alpha))
-            + ET.dot(d)
-            )
-
-    # pylint: disable=unused-argument
-    def hessp(x, p):
-        return sum(at.dot(a.dot(p)) for at, a in zip(AT, A)) + ET.dot(E.dot(p))
-
-    alpha0 = numpy.zeros(V.dim())
-    out = minimize(
-        f,
-        alpha0,
-        jac=True,
-        hessp=hessp,
-        # method='L-BFGS-B',
-        method='Newton-CG',
-        tol=1.0e-14
-        )
-    if verbose:
-        print('minimization successful? {}'.format(out.success))
-        print('number of function evals: {}'.format(out.nfev))
-        print('cost functional value: {}'.format(out.fun))
-    assert out.success, 'Optimization not successful.'
-
-    return out.x

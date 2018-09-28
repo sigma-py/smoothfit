@@ -1,9 +1,0 @@
-[MESSAGES CONTROL]
-
-disable=
-    invalid-name,
-    missing-docstring,
-    no-member,
-    no-name-in-module,
-    too-many-arguments,
-    too-many-locals,
