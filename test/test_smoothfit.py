@@ -5,7 +5,8 @@ from __future__ import division
 from dolfin import assemble, dx
 import matplotlib.pyplot as plt
 import numpy
-import pytest
+
+# import pytest
 
 import smoothfit
 
@@ -29,23 +30,19 @@ def test_1d_show():
 
     u = smoothfit.fit1d(x0, y0, a, b, 10, degree=2, eps=1.0e-2)
 
-    # ref = 1.5955290123404824
-    # val = assemble(u*u * dx)
-    # assert abs(val - ref) < 1.0e-10 * ref
+    ref = 1.5955290123404824
+    val = assemble(u * u * dx)
+    assert abs(val - ref) < 1.0e-10 * ref
 
-    # # x = u.function_space().mesh().coordinates()
-    # x = numpy.linspace(a, b, 201)
-    # vals = [u(xx) for xx in x]
+    # x = u.function_space().mesh().coordinates()
+    x = numpy.linspace(a, b, 201)
+    vals = [u(xx) for xx in x]
 
-    # plt.plot(x0, y0, 'xk', label='data')
-    # plt.plot(
-    #     x, vals, '-',
-    #     color='k', alpha=0.3,
-    #     label='smooth fit'
-    #     )
-    # plt.xlim(a, b)
-    # plt.legend()
-    # plt.show()
+    plt.plot(x0, y0, "xk", label="data")
+    plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
+    plt.xlim(a, b)
+    plt.legend()
+    plt.show()
     return
 
 
@@ -175,8 +172,8 @@ def test_1d_scale():
 
 
 if __name__ == "__main__":
-    # test_1d_show()
+    test_1d_show()
     # test_2d('dense')
     # test_2d('gmres')
     # test_1d_scale()
-    test_triangle()
+    # test_triangle()
