@@ -14,8 +14,8 @@ jobs:
       - run: pip3 install .
       - run: pip3 install -r test_requirements.txt
       # lint
-      - run: LC_ALL=C.UTF-8 black --check setup.py quadpy/ test/*.py
-      - run: flake8 setup.py quadpy/ test/*.py
+      - run: LC_ALL=C.UTF-8 black --check setup.py smoothfit/ test/*.py
+      - run: flake8 setup.py smoothfit/ test/*.py
       # The actual test
       # For some reason ssh is needed; probably dolfin parallel?
       - run: apt install -y ssh
