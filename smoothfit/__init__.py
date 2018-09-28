@@ -9,7 +9,7 @@ from .__about__ import (
     __website__
     )
 
-from .main import fit, fit1d, fit2d
+from .main import fit, fit1d, fit2d, fit_polygon
 
 # try:
 #     import pipdate

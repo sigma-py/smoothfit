@@ -34,6 +34,10 @@ setup(
         'pipdate',
         'scipy',
         ],
+    extras_require={
+        'all': ['pygmsh'],
+        'meshgen': ['pygmsh'],
+        },
     classifiers=[
         about['__status__'],
         about['__license__'],

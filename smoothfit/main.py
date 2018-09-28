@@ -8,7 +8,6 @@ from dolfin import (
 import numpy
 import pyamg
 from scipy import sparse
-from scipy.sparse import linalg
 from scipy.sparse.linalg import LinearOperator
 import krypy
 
@@ -37,8 +36,7 @@ def _build_eval_matrix(V, points):
         rows.append(numpy.full(sdim, i))
         cols.append(dofmap.cell_dofs(cell_id))
 
-        v = numpy.empty(sdim, dtype=float)
-        el.evaluate_basis_all(v, x, coordinate_dofs, cell_id)
+        v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
         data.append(v)
 
     rows = numpy.concatenate(rows)
@@ -58,13 +56,54 @@ def fit1d(x0, y0, a, b, n, eps, degree=1):
 
     # Find the indices corresponding to the end points
     dofs_x = V.tabulate_dof_coordinates()
-    i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0]
-    i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0]
+    i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0][0]
+    i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0][0]
 
     return fit(
         x0[:, numpy.newaxis], y0, V, Eps,
-        solver='gmres', prec_dirichlet_indices=[i0, i1]
+        prec_dirichlet_indices=[i0, i1]
         )
+
+
+# def fit_triangle(x0, y0, corners, eps):
+#     return
+
+def fit_polygon(x0, y0, eps, corners, char_length):
+    # Create the mesh with pygmsh
+    import pygmsh
+    geom = pygmsh.built_in.Geometry()
+    corners3d = numpy.column_stack([corners, numpy.zeros(len(corners))])
+    geom.add_polygon(corners3d, lcar=char_length)
+    points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    cells = cells['triangle']
+
+    editor = MeshEditor()
+    mesh = Mesh()
+    # topological and geometrical dimension 2
+    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point[:2])
+    for k, cell in enumerate(cells.astype(numpy.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+
+    # Only allow degree 1 for now. It's unclear how many Dirichlet points are
+    # needed to make the preconditioning operator positive definite.
+    V = FunctionSpace(mesh, 'CG', 1)
+
+    # Find the indices corresponding to the corners
+    gdim = mesh.geometry().dim()
+    dofs_x = V.tabulate_dof_coordinates().reshape(-1, gdim)
+    i = []
+    for corner in corners:
+        diff = dofs_x - corner
+        norm_diff = numpy.einsum('ij, ij->i', diff, diff)
+        i.append(numpy.where(abs(norm_diff) < 1.0e-15)[0][0])
+
+    Eps = numpy.array([[2*eps, eps], [eps, 2*eps]])
+    return fit(x0, y0, V, Eps, prec_dirichlet_indices=None)
 
 
 def fit2d(x0, y0, points, cells, eps,
@@ -97,7 +136,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, V, Eps, solver='gmres', prec_dirichlet_indices=None):
+def fit(x0, y0, V, Eps, solver='dense', prec_dirichlet_indices=None):
     u = TrialFunction(V)
     v = TestFunction(V)
 
