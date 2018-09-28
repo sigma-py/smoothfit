@@ -25,7 +25,7 @@ import numpy
 import pyamg
 from scipy import sparse
 from scipy.sparse.linalg import LinearOperator
-import krypy
+import pykry
 
 
 def _build_eval_matrix(V, points):
@@ -254,8 +254,7 @@ def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
         # assert info == 0, \
         #     'sparse.linalg.gmres not successful (error code {})'.format(info)
 
-        linsys = krypy.linsys.LinearSystem(matrix, BTb, M=prec)
-        out = krypy.linsys.Gmres(linsys, tol=1.0e-10)
+        out = pykry.gmres(matrix, BTb, M=prec, tol=1.0e-10)
         print(len(out.resnorms))
         x = out.xk
 
