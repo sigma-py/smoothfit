@@ -1,12 +1,12 @@
 from __future__ import division
 
-from dolfin import assemble, dx
 import matplotlib.pyplot as plt
 import numpy
-
-# import pytest
+from dolfin import assemble, dx
 
 import smoothfit
+
+# import pytest
 
 
 def test_1d_show():

@@ -1,28 +1,29 @@
-from dolfin import (
-    IntervalMesh,
-    FunctionSpace,
-    TrialFunction,
-    TestFunction,
-    assemble,
-    dx,
-    BoundingBoxTree,
-    Point,
-    Cell,
-    MeshEditor,
-    Mesh,
-    Function,
-    FacetNormal,
-    ds,
-    Constant,
-    EigenMatrix,
-    dot,
-    as_tensor,
-    grad,
-)
 import numpy
 import pyamg
+from dolfin import (
+    BoundingBoxTree,
+    Cell,
+    Constant,
+    EigenMatrix,
+    FacetNormal,
+    Function,
+    FunctionSpace,
+    IntervalMesh,
+    Mesh,
+    MeshEditor,
+    Point,
+    TestFunction,
+    TrialFunction,
+    as_tensor,
+    assemble,
+    dot,
+    ds,
+    dx,
+    grad,
+)
 from scipy import sparse
 from scipy.sparse.linalg import LinearOperator
+
 import pykry
 
 
