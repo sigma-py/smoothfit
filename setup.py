@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
-#
 import codecs
 import os
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # https://packaging.python.org/single_source_version/
 base_dir = os.path.abspath(os.path.dirname(__file__))
 about = {}
 with open(os.path.join(base_dir, "smoothfit", "__about__.py"), "rb") as f:
-    # pylint: disable=exec-used
     exec(f.read(), about)
 
 
@@ -31,13 +28,13 @@ setup(
     platforms="any",
     install_requires=["numpy", "pyamg", "pykry", "scipy"],
     extras_require={"all": ["pygmsh"], "meshgen": ["pygmsh"]},
+    python_requires=">=3",
     classifiers=[
         about["__status__"],
         about["__license__"],
         "Intended Audience :: Science/Research",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering",
     ],

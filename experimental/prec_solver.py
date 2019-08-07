@@ -3,21 +3,39 @@
 import itertools
 import time
 
-from dolfin import (
-    IntervalMesh, FunctionSpace, TrialFunction, TestFunction, assemble, dot,
-    grad, dx, BoundingBoxTree, Point, Cell, MeshEditor, Mesh, Function,
-    FacetNormal, ds, Constant, as_tensor, EigenMatrix, DirichletBC, XDMFFile
-    )
 import matplotlib.pyplot as plt
-import krypy
 import numpy
 import pyamg
 import scipy
+from dolfin import (
+    BoundingBoxTree,
+    Cell,
+    Constant,
+    DirichletBC,
+    EigenMatrix,
+    FacetNormal,
+    Function,
+    FunctionSpace,
+    IntervalMesh,
+    Mesh,
+    MeshEditor,
+    Point,
+    TestFunction,
+    TrialFunction,
+    XDMFFile,
+    as_tensor,
+    assemble,
+    dot,
+    ds,
+    dx,
+    grad,
+)
 from scipy import sparse
 from scipy.optimize import minimize
 from scipy.sparse.linalg import LinearOperator
-import meshzoo
 
+import krypy
+import meshzoo
 
 
 def _assemble_eigen(form, bcs=None):
@@ -37,7 +55,7 @@ def _spsolve(A, b):
 
 
 def solve(mesh, Eps, degree):
-    V = FunctionSpace(mesh, 'CG', degree)
+    V = FunctionSpace(mesh, "CG", degree)
     u = TrialFunction(V)
     v = TestFunction(V)
 
@@ -47,21 +65,21 @@ def solve(mesh, Eps, degree):
 
     A = [
         _assemble_eigen(
-            + Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+            +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
             - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
-            ).sparray()
+        ).sparray()
         for j in range(gdim)
         for i in range(gdim)
-        ]
+    ]
 
     assert_equality = True
     if assert_equality:
         # The sum of the `A`s is exactly that:
         n = FacetNormal(V.mesh())
         AA = _assemble_eigen(
-            + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+            +dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
             - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
-            ).sparray()
+        ).sparray()
         diff = AA - sum(A)
         assert numpy.all(abs(diff.data) < 1.0e-14)
         #
@@ -74,7 +92,7 @@ def solve(mesh, Eps, degree):
         # print(diff.data)
         # assert numpy.all(abs(diff.data) < 1.0e-14)
 
-    tol=1.0e-10
+    tol = 1.0e-10
 
     def lower(x, on_boundary):
         return on_boundary and x[1] < -1.0 + tol
@@ -102,17 +120,17 @@ def solve(mesh, Eps, degree):
         # DirichletBC(V, Constant(0.0), upper_left, method='pointwise'),
         # DirichletBC(V, Constant(0.0), lower_left, method='pointwise'),
         # DirichletBC(V, Constant(0.0), lower_right, method='pointwise'),
-        ]
+    ]
 
-    M = _assemble_eigen(u*v*dx).sparray()
+    M = _assemble_eigen(u * v * dx).sparray()
 
     ATMinvAsum = sum(
         numpy.dot(a.toarray().T, numpy.linalg.solve(M.toarray(), a.toarray()))
         for a in A
-        )
+    )
 
     AA2 = _assemble_eigen(
-        + dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
+        +dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
         - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds,
         # bcs=[DirichletBC(V, Constant(0.0), 'on_boundary')]
         # bcs=bcs
@@ -120,7 +138,7 @@ def solve(mesh, Eps, degree):
         #     DirichletBC(V, Constant(0.0), lower),
         #     DirichletBC(V, Constant(0.0), right),
         #     ]
-        ).sparray()
+    ).sparray()
 
     ATA2 = numpy.dot(AA2.toarray().T, numpy.linalg.solve(M.toarray(), AA2.toarray()))
 
@@ -133,7 +151,7 @@ def solve(mesh, Eps, degree):
         is_updated = False
         it = 0
         # get boundary indices
-        d = DirichletBC(V, Constant(0.0), 'on_boundary')
+        d = DirichletBC(V, Constant(0.0), "on_boundary")
         boundary_idx = numpy.sort(list(d.get_boundary_values().keys()))
         # boundary_idx = numpy.arange(V.dim())
         # print(boundary_idx)
@@ -153,7 +171,9 @@ def solve(mesh, Eps, degree):
             n = AA3.shape[0]
             AA3 = AA3.tocsr()
 
-            ATA2 = numpy.dot(AA3.toarray().T, numpy.linalg.solve(M.toarray(), AA3.toarray()))
+            ATA2 = numpy.dot(
+                AA3.toarray().T, numpy.linalg.solve(M.toarray(), AA3.toarray())
+            )
             vals = numpy.sort(numpy.linalg.eigvalsh(ATA2))
             if vals[0] < 0.0:
                 continue
@@ -189,9 +209,9 @@ def solve(mesh, Eps, degree):
                 meshzoo.plot2d(mesh.coordinates(), mesh.cells())
                 dofs_x = V.tabulate_dof_coordinates().reshape((-1, gdim))
                 # plt.plot(dofs_x[min_combi, 0], dofs_x[min_combi, 1], 'or')
-                plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], 'ob')
-                plt.gca().set_aspect('equal')
-                plt.title('smallest eigenvalue: {}'.format(max_val))
+                plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], "ob")
+                plt.gca().set_aspect("equal")
+                plt.title("smallest eigenvalue: {}".format(max_val))
                 plt.show()
 
             # # if True:
@@ -208,9 +228,9 @@ def solve(mesh, Eps, degree):
         meshzoo.plot2d(mesh.coordinates(), mesh.cells())
         dofs_x = V.tabulate_dof_coordinates().reshape((-1, gdim))
         # plt.plot(dofs_x[min_combi, 0], dofs_x[min_combi, 1], 'or')
-        plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], 'ob')
-        plt.gca().set_aspect('equal')
-        plt.title('final smallest eigenvalue: {}'.format(max_val))
+        plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], "ob")
+        plt.gca().set_aspect("equal")
+        plt.title("final smallest eigenvalue: {}".format(max_val))
         plt.show()
         exit(1)
 
@@ -219,13 +239,13 @@ def solve(mesh, Eps, degree):
         ATMinvAsum_eigs = numpy.sort(numpy.linalg.eigvalsh(ATMinvAsum))
         ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2))
         print(ATA2_eigs[:20])
-        plt.semilogy(ATMinvAsum_eigs, '.', label='ATMinvAsum')
-        plt.semilogy(ATA2_eigs, '.', label='ATA2')
+        plt.semilogy(ATMinvAsum_eigs, ".", label="ATMinvAsum")
+        plt.semilogy(ATA2_eigs, ".", label="ATA2")
         plt.legend()
         plt.show()
         # Preconditioned eigenvalues
         IATA_eigs = numpy.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
-        plt.semilogy(IATA_eigs, '.', label='precond eigenvalues')
+        plt.semilogy(IATA_eigs, ".", label="precond eigenvalues")
         plt.legend()
         plt.show()
         exit(1)
@@ -254,6 +274,7 @@ def solve(mesh, Eps, degree):
         # or algebraic multigrid.
         # return sum([a.T.dot(a.dot(x)) for a in A])
         return numpy.sum([a.T.dot(_spsolve(M, a.dot(x))) for a in A], axis=0)
+
     op = sparse.linalg.LinearOperator((n, n), matvec=matvec)
 
     # pick a random solution and a consistent rhs
@@ -261,17 +282,21 @@ def solve(mesh, Eps, degree):
     b = op.dot(x)
 
     linear_system = krypy.linsys.LinearSystem(op, b)
-    print('unpreconditioned solve...')
+    print("unpreconditioned solve...")
     t = time.time()
     out = krypy.linsys.Gmres(linear_system, tol=1.0e-12, explicit_residual=True)
     out.xk = out.xk.reshape(b.shape)
-    print('done.')
-    print('  res: {}'.format(out.resnorms[-1]))
-    print('  unprec res: {}'.format(numpy.linalg.norm(b - op.dot(out.xk)) / numpy.linalg.norm(b)))
+    print("done.")
+    print("  res: {}".format(out.resnorms[-1]))
+    print(
+        "  unprec res: {}".format(
+            numpy.linalg.norm(b - op.dot(out.xk)) / numpy.linalg.norm(b)
+        )
+    )
     # The error isn't useful here; only with the nullspace removed
     # print('  error: {}'.format(numpy.linalg.norm(out.xk - x)))
-    print('  its: {}'.format(len(out.resnorms)))
-    print('  duration: {}s'.format(time.time() - t))
+    print("  its: {}".format(len(out.resnorms)))
+    print("  duration: {}s".format(time.time() - t))
 
     # preconditioned solver
     ml = pyamg.smoothed_aggregation_solver(AA2)
@@ -296,6 +321,7 @@ def solve(mesh, Eps, degree):
         b2 = M.dot(b1)
         x = ml.solve(b2, x0, tol=1.0e-12)
         return x
+
     prec = LinearOperator((n, n), matvec=prec_matvec)
 
     # TODO assert this in a test
@@ -304,39 +330,42 @@ def solve(mesh, Eps, degree):
 
     linear_system = krypy.linsys.LinearSystem(op, b, Ml=prec)
     print()
-    print('preconditioned solve...')
+    print("preconditioned solve...")
     t = time.time()
     try:
         out_prec = krypy.linsys.Gmres(
-            linear_system, tol=1.0e-14,
-            maxiter=1000,
-            explicit_residual=True
-            )
+            linear_system, tol=1.0e-14, maxiter=1000, explicit_residual=True
+        )
     except krypy.utils.ConvergenceError:
-        print('prec not converged!')
+        print("prec not converged!")
         pass
     out_prec.xk = out_prec.xk.reshape(b.shape)
-    print('done.')
-    print('  res: {}'.format(out_prec.resnorms[-1]))
-    print('  unprec res: {}'.format(numpy.linalg.norm(b - op.dot(out_prec.xk)) / numpy.linalg.norm(b)))
-    print('  its: {}'.format(len(out_prec.resnorms)))
-    print('  duration: {}s'.format(time.time() - t))
+    print("done.")
+    print("  res: {}".format(out_prec.resnorms[-1]))
+    print(
+        "  unprec res: {}".format(
+            numpy.linalg.norm(b - op.dot(out_prec.xk)) / numpy.linalg.norm(b)
+        )
+    )
+    print("  its: {}".format(len(out_prec.resnorms)))
+    print("  duration: {}s".format(time.time() - t))
 
-    plt.semilogy(out.resnorms, label='original')
-    plt.semilogy(out_prec.resnorms, label='preconditioned')
+    plt.semilogy(out.resnorms, label="original")
+    plt.semilogy(out_prec.resnorms, label="preconditioned")
     plt.legend()
     plt.show()
 
     return out.xk
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # # 1d mesh
     # mesh = IntervalMesh(300, -1.0, +1.0)
     # Eps = numpy.array([[1.0]])
 
     # 2d mesh
     import meshzoo
+
     # Triangle:
     # Dirichlet points _must_ be the corners of the triangle
     points, cells = meshzoo.triangle(8, corners=[[0, 0], [1, 0], [0, 1]])
@@ -433,7 +462,7 @@ if __name__ == '__main__':
     editor = MeshEditor()
     mesh = Mesh()
     # topological and geometrical dimension 2
-    editor.open(mesh, 'triangle', 2, 2, 1)
+    editor.open(mesh, "triangle", 2, 2, 1)
     editor.init_vertices(len(points))
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
