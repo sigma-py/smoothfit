@@ -12,7 +12,7 @@ import smoothfit
 def test_1d_show():
     n = 20
     # x0 = numpy.linspace(-1.0, 1.0, n)
-    numpy.random.seed(123)
+    numpy.random.seed(2)
     x0 = numpy.random.rand(n) * 2 - 1
 
     # y0 = x0.copy()
@@ -26,18 +26,26 @@ def test_1d_show():
     a = -1.5
     b = +1.5
 
-    u = smoothfit.fit1d(x0, y0, a, b, 10, degree=2, eps=1.0e-2)
+    lmbda = 1.0e-2
+    u = {
+        # "8": smoothfit.fit1d(x0, y0, a, b, 8, degree=1, lmbda=lmbda),
+        # "16": smoothfit.fit1d(x0, y0, a, b, 16, degree=1, lmbda=lmbda),
+        # "32": smoothfit.fit1d(x0, y0, a, b, 32, degree=1, lmbda=lmbda),
+        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
+    }
 
-    ref = 1.5955290123404824
-    val = assemble(u * u * dx)
-    assert abs(val - ref) < 1.0e-10 * ref
+    # ref = 1.5955290123404824
+    # val = assemble(u * u * dx)
+    # assert abs(val - ref) < 1.0e-10 * ref
 
     # x = u.function_space().mesh().coordinates()
     x = numpy.linspace(a, b, 201)
-    vals = [u(xx) for xx in x]
+    for h, uu in u.items():
+        vals = [uu(xx) for xx in x]
+        plt.plot(x, vals, "-", label=f"smooth fit {h}")
 
-    plt.plot(x0, y0, "xk", label="data")
-    plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
+    plt.plot(x0, y0, "xk", label="samples")
+    plt.plot(x, numpy.sin(numpy.pi * x), "-", color="0.8", label="original")
     plt.xlim(a, b)
     plt.legend()
     plt.show()
@@ -47,12 +55,12 @@ def test_1d_show():
 def test_1d_scale():
     n = 20
     # x0 = numpy.linspace(-1.0, 1.0, n)
-    numpy.random.seed(123)
+    numpy.random.seed(3)
     x0 = numpy.random.rand(n) * 2 - 1
     y0 = numpy.sin(1 * numpy.pi * x0)  # + 1.0e-1 * (2*numpy.random.rand(n) - 1)
     a = -1.5
     b = +1.5
-    u1 = smoothfit.fit1d(x0, y0, a, b, n=10, degree=1, eps=1.0e-1)
+    u1 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=1.0e-1)
 
     x = numpy.linspace(a, b, 201)
     vals = [u1(xx) for xx in x]
@@ -67,7 +75,7 @@ def test_1d_scale():
     y0 *= alpha
     a *= alpha
     b *= alpha
-    u2 = smoothfit.fit1d(x0, y0, a, b, n=10, degree=1, eps=1.0e-1)
+    u2 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=1.0e-3)
 
     x = numpy.linspace(a, b, 201)
     vals = [u2(xx) for xx in x]
@@ -137,41 +145,42 @@ def test_1d_scale():
 # @pytest.mark.parametrize(
 #     'solver', ['dense', 'gmres']
 #     )
-# def test_2d(solver):
-#     n = 200
-#     numpy.random.seed(123)
-#     x0 = numpy.random.rand(n, 2) - 0.5
-#     # y0 = numpy.ones(n)
-#     # y0 = x0[:, 0]
-#     # y0 = x0[:, 0]**2
-#     # y0 = numpy.cos(numpy.pi*x0.T[0])
-#     # y0 = numpy.cos(numpy.pi*x0.T[0]) * numpy.cos(numpy.pi*x0.T[1])
-#     y0 = numpy.cos(numpy.pi*numpy.sqrt(x0.T[0]**2 + x0.T[1]**2))
-#
-#     import meshzoo
-#     points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 20, 20)
-#
-#     # import pygmsh
-#     # geom = pygmsh.built_in.Geometry()
-#     # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
-#     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
-#     # cells = cells['triangle']
-#
-#     u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-2, solver=solver)
-#
-#     ref = 4.4112141557993105
-#     val = assemble(u*u * dx)
-#     assert abs(val - ref) < 1.0e-10 * ref
-#
-#     # from dolfin import XDMFFile
-#     # xdmf = XDMFFile('temp.xdmf')
-#     # xdmf.write(u)
-#     return
+def test_2d(solver):
+    n = 200
+    numpy.random.seed(123)
+    x0 = numpy.random.rand(n, 2) - 0.5
+    # y0 = numpy.ones(n)
+    # y0 = x0[:, 0]
+    # y0 = x0[:, 0]**2
+    # y0 = numpy.cos(numpy.pi*x0.T[0])
+    # y0 = numpy.cos(numpy.pi*x0.T[0]) * numpy.cos(numpy.pi*x0.T[1])
+    y0 = numpy.cos(numpy.pi * numpy.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
+
+    import meshzoo
+
+    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
+
+    # import pygmsh
+    # geom = pygmsh.built_in.Geometry()
+    # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
+    # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    # cells = cells['triangle']
+
+    u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-2, solver=solver)
+
+    # ref = 4.411_214_155_799_310_5
+    # val = assemble(u * u * dx)
+    # assert abs(val - ref) < 1.0e-10 * ref
+
+    from dolfin import XDMFFile
+    xdmf = XDMFFile('temp.xdmf')
+    xdmf.write(u)
+    return
 
 
 if __name__ == "__main__":
-    test_1d_show()
-    # test_2d('dense')
+    # test_1d_show()
+    test_2d("dense")
     # test_2d('gmres')
     # test_1d_scale()
     # test_triangle()

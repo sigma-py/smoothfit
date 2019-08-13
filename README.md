@@ -4,7 +4,7 @@ Smooth data fitting in N dimensions.
 
 [![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg)](https://circleci.com/gh/nschloe/smoothfit)
 [![codecov](https://img.shields.io/codecov/c/github/nschloe/smoothfit.svg)](https://codecov.io/gh/nschloe/smoothfit)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![smooth](https://img.shields.io/badge/smooth-yes-8209ba.svg)](https://github.com/nschloe/smoothfit)
 [![PyPi Version](https://img.shields.io/pypi/v/smoothfit.svg)](https://pypi.org/project/smoothfit)
 [![GitHub stars](https://img.shields.io/github/stars/nschloe/smoothfit.svg?logo=github&label=Stars&logoColor=white)](https://github.com/nschloe/smoothfit)

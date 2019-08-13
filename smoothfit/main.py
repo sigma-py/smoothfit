@@ -64,9 +64,9 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, eps, degree=1):
+def fit1d(x0, y0, a, b, n, lmbda, degree=1):
     mesh = IntervalMesh(n, a, b)
-    Eps = numpy.array([[eps]])
+    Lmbda = numpy.array([[lmbda]])
     V = FunctionSpace(mesh, "CG", degree)
 
     # Find the indices corresponding to the end points
@@ -74,7 +74,7 @@ def fit1d(x0, y0, a, b, n, eps, degree=1):
     i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0][0]
     i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0][0]
 
-    return fit(x0[:, numpy.newaxis], y0, V, Eps, prec_dirichlet_indices=[i0, i1])
+    return fit(x0[:, numpy.newaxis], y0, V, Lmbda, prec_dirichlet_indices=[i0, i1])
 
 
 # def fit_triangle(x0, y0, corners, eps):
@@ -156,17 +156,19 @@ def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
     mesh = V.mesh()
     n = FacetNormal(mesh)
 
-    gdim = mesh.geometry().dim()
+    # vol = assemble(Constant(1) * dx(mesh))
 
-    A = [
-        _assemble_eigen(
-            +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
-            # pylint: disable=unsubscriptable-object
-            - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
-        ).sparray()
-        for i in range(gdim)
-        for j in range(gdim)
-    ]
+    # gdim = mesh.geometry().dim()
+    # A = [
+    #     _assemble_eigen(
+    #         +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
+    #         - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
+    #     ).sparray()
+    #     for i in range(gdim)
+    #     for j in range(gdim)
+    # ]
+
+    A = Eps[0, 0] * _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
 
     E = _build_eval_matrix(V, x0)
 
@@ -182,12 +184,27 @@ def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
     if solver == "dense":
         # Minv is dense, yikes!
         M = M.toarray()
-        BTMinvB = sum(
-            numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray())) for a in A
-        ) + E.T.dot(E)
+        BTMinvB = numpy.dot(A.toarray().T, numpy.linalg.solve(M, A.toarray())) + E.T.dot(E)
         # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
         BTb = E.T.dot(y0)
-        x = sparse.linalg.spsolve(BTMinvB, BTb)
+        x = numpy.linalg.solve(BTMinvB, BTb)
+
+        # compute residual
+        # r0 = E * x - y0
+        # alpha = numpy.dot(r0, r0)
+        # Ax = numpy.dot(A.toarray(), x)
+        # beta = numpy.dot(Ax, numpy.linalg.solve(M, Ax))
+        # print(alpha, beta, alpha + beta)
+        # exit(1)
+
+        # # Minv is dense, yikes!
+        # M = M.toarray()
+        # BTMinvB = sum(
+        #     numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray())) for a in A
+        # ) + E.T.dot(E)
+        # # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
+        # BTb = E.T.dot(y0)
+        # x = sparse.linalg.spsolve(BTMinvB, BTb)
 
     else:
         assert solver == "gmres", "Unknown solver '{}'.".format(solver)
