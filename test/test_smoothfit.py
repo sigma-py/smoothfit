@@ -1,12 +1,9 @@
-from __future__ import division
-
 import matplotlib.pyplot as plt
 import numpy
-from dolfin import assemble, dx
 
 import smoothfit
 
-# import pytest
+import pytest
 
 
 def test_1d_show():
@@ -31,7 +28,7 @@ def test_1d_show():
         # "8": smoothfit.fit1d(x0, y0, a, b, 8, degree=1, lmbda=lmbda),
         # "16": smoothfit.fit1d(x0, y0, a, b, 16, degree=1, lmbda=lmbda),
         # "32": smoothfit.fit1d(x0, y0, a, b, 32, degree=1, lmbda=lmbda),
-        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, solver="sparse", lmbda=lmbda)
+        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
     }
 
     # ref = 1.5955290123404824
@@ -52,99 +49,43 @@ def test_1d_show():
     return
 
 
-def test_1d_scale():
-    n = 20
-    # x0 = numpy.linspace(-1.0, 1.0, n)
-    numpy.random.seed(3)
-    x0 = numpy.random.rand(n) * 2 - 1
-    y0 = numpy.sin(1 * numpy.pi * x0)  # + 1.0e-1 * (2*numpy.random.rand(n) - 1)
-    a = -1.5
-    b = +1.5
-    u1 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=1.0e-1)
-
-    x = numpy.linspace(a, b, 201)
-    vals = [u1(xx) for xx in x]
-    plt.plot(x0, y0, "xk", label="data")
-    plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
-    plt.xlim(a, b)
-    plt.legend()
-
-    # now scale the input points and values and do it again
-    alpha = 0.1
-    x0 *= alpha
-    y0 *= alpha
-    a *= alpha
-    b *= alpha
-    u2 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=1.0e-3)
-
-    x = numpy.linspace(a, b, 201)
-    vals = [u2(xx) for xx in x]
-    plt.figure()
-    plt.plot(x0, y0, "xk", label="data")
-    plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
-    plt.xlim(a, b)
-    plt.legend()
-    plt.show()
-    return
-
-
-# def test_triangle():
-#     # generate some random points in the triangle
-#     n = 10
-#     numpy.random.seed(123)
-#     x0 = numpy.random.rand(n, 2)
-#     for k in range(len(x0)):
-#         # If the point is not in the triangle [0,0]--[1,0]--[0,1], reflect it
-#         # on the line y=1-x.
-#         if x0[k][0] + x0[k][1] > 1:
-#             x0[k] = 1 - numpy.array([x0[k][1], x0[k][0]])
+# def test_1d_scale():
+#     n = 20
+#     # x0 = numpy.linspace(-1.0, 1.0, n)
+#     numpy.random.seed(3)
+#     x0 = numpy.random.rand(n) * 2 - 1
+#     y0 = numpy.sin(1 * numpy.pi * x0)  # + 1.0e-1 * (2*numpy.random.rand(n) - 1)
+#     a = -1.5
+#     b = +1.5
+#     u1 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=2.0e-1)
 #
-#     y0 = numpy.cos(numpy.pi*numpy.sqrt(x0.T[0]**2 + x0.T[1]**2))
+#     x = numpy.linspace(a, b, 201)
+#     vals = [u1(xx) for xx in x]
+#     plt.plot(x0, y0, "xk", label="data")
+#     plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
+#     plt.xlim(a, b)
+#     plt.legend()
 #
-#     corners = numpy.array([
-#         [0.0, 0.0],
-#         [1.0, 0.0],
-#         [0.0, 1.0],
-#         ])
+#     # now scale the input points and values and do it again
+#     alpha = 0.1
+#     x0 *= alpha
+#     y0 *= alpha
+#     a *= alpha
+#     b *= alpha
+#     u2 = smoothfit.fit1d(x0, y0, a, b, n=100, degree=1, lmbda=2.0e-1 * alpha**3)
 #
-#     u = smoothfit.fit_polygon(
-#         x0, y0, eps=1.0e-2,
-#         corners=corners, char_length=1.0e-2
-#         )
-#
-#     val = assemble(u*u * dx)
-#     print(val)
-#     exit(1)
+#     x = numpy.linspace(a, b, 201)
+#     vals = [u2(xx) for xx in x]
+#     plt.figure()
+#     plt.plot(x0, y0, "xk", label="data")
+#     plt.plot(x, vals, "-", color="k", alpha=0.3, label="smooth fit")
+#     plt.xlim(a, b)
+#     plt.legend()
+#     plt.show()
 #     return
-#
-#
-# def test_polygon():
-#     n = 10
-#     numpy.random.seed(123)
-#     x0 = numpy.random.rand(n, 2) - 0.5
-#     y0 = numpy.cos(numpy.pi*numpy.sqrt(x0.T[0]**2 + x0.T[1]**2))
-#
-#     corners = numpy.array([
-#         [-1.0, -1.0],
-#         [+1.0, -1.0],
-#         [+1.0, +1.0],
-#         [-1.0, +1.0],
-#         ])
-#
-#     u = smoothfit.fit_polygon(
-#         x0, y0, eps=1.0e-2,
-#         corners=corners, char_length=0.2
-#         )
-#
-#     val = assemble(u*u * dx)
-#     print(val)
-#     exit(1)
-#     return
-#
-#
-# @pytest.mark.parametrize(
-#     'solver', ['dense', 'gmres']
-#     )
+
+
+@pytest.mark.parametrize("solver", ["dense-direct", "sparse-cg"])
 def test_2d(solver):
     n = 200
     numpy.random.seed(123)
@@ -158,7 +99,7 @@ def test_2d(solver):
 
     import meshzoo
 
-    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
+    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 16, 16)
 
     # import pygmsh
     # geom = pygmsh.built_in.Geometry()
@@ -166,7 +107,7 @@ def test_2d(solver):
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    u = smoothfit.fit2d(x0, y0, points, cells, eps=1.0e-2, solver=solver)
+    u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-2, solver=solver)
 
     # ref = 4.411_214_155_799_310_5
     # val = assemble(u * u * dx)
@@ -183,6 +124,5 @@ if __name__ == "__main__":
     test_1d_show()
     # test_2d("dense")
     # test_2d("minimization")
-    # test_2d('gmres')
+    # test_2d("sparse")
     # test_1d_scale()
-    # test_triangle()
