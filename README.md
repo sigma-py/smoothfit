@@ -29,7 +29,7 @@ general idea that
 This can be molded into an optimization problem: You're looking for a
 twice-differentiable function _f_ that minimizes the expression
 
-    ∑<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> +  λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
+∑<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> + λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
 
 The first expression is small if the function matches the sample points; the second
 expression is small if _f_ is flat.
