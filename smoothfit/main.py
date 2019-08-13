@@ -1,9 +1,8 @@
 import numpy
-import pyamg
+import scipy.optimize
 from dolfin import (
     BoundingBoxTree,
     Cell,
-    Constant,
     EigenMatrix,
     FacetNormal,
     Function,
@@ -14,7 +13,6 @@ from dolfin import (
     Point,
     TestFunction,
     TrialFunction,
-    as_tensor,
     assemble,
     dot,
     ds,
@@ -22,7 +20,6 @@ from dolfin import (
     grad,
 )
 from scipy import sparse
-from scipy.sparse.linalg import LinearOperator
 
 import pykry
 
@@ -64,17 +61,10 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, lmbda, degree=1):
+def fit1d(x0, y0, a, b, n, lmbda, solver="dense", degree=1):
     mesh = IntervalMesh(n, a, b)
-    Lmbda = numpy.array([[lmbda]])
     V = FunctionSpace(mesh, "CG", degree)
-
-    # Find the indices corresponding to the end points
-    dofs_x = V.tabulate_dof_coordinates()
-    i0 = numpy.where(abs(dofs_x - a) < 1.0e-15)[0][0]
-    i1 = numpy.where(abs(dofs_x - b) < 1.0e-15)[0][0]
-
-    return fit(x0[:, numpy.newaxis], y0, V, Lmbda, prec_dirichlet_indices=[i0, i1])
+    return fit(x0[:, numpy.newaxis], y0, V, lmbda, solver=solver)
 
 
 # def fit_triangle(x0, y0, corners, eps):
@@ -149,130 +139,91 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, V, Eps, solver="dense", prec_dirichlet_indices=None):
+def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
+    """We're trying to minimize
+
+       sum_i (f(xi) - yi)^2  +  lmbda ||Delta f||^2_{L^2(Omega)}
+
+    over all functions f from V. The discretization of this is
+
+       ||E(f) - y||_2^2 + lmbda ||Delta_h f_h||^2_{M^{-1}}
+
+    where E is the (small and fat) evaluation operator at coordinates x_i, Delta_h is
+    the discretization of Delta, and M is the mass matrix. One can either try and
+    minimize this equation with a generic method or solve the linear equation
+
+      lmbda A.T M^{-1} A x + E.T E x = E.T y0
+
+    for the extremum x. Unfortunately, solving the linear equation is not
+    straightforward. M is spd, A is nonsymmetric and rank-deficient but
+    positive-semidefinite. So far, we simply use sparse CG, but a good idea for a
+    preconditioner is highly welcome.
+    """
     u = TrialFunction(V)
     v = TestFunction(V)
 
     mesh = V.mesh()
     n = FacetNormal(mesh)
 
-    # vol = assemble(Constant(1) * dx(mesh))
+    # omega = assemble(1 * dx(mesh))
 
-    # gdim = mesh.geometry().dim()
-    # A = [
-    #     _assemble_eigen(
-    #         +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
-    #         - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
-    #     ).sparray()
-    #     for i in range(gdim)
-    #     for j in range(gdim)
-    # ]
-
-    A = Eps[0, 0] * _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
+    A = _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
+    A *= numpy.sqrt(lmbda)
 
     E = _build_eval_matrix(V, x0)
-
-    # omega = assemble(1 * dx(mesh))
 
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    # Scipy implementations of both LSQR and LSMR can only be used with the
-    # standard l_2 inner product. This is not sufficient here: We need the M
-    # inner product to make sure that the discrete residual is an approximation
-    # to the inner product of the continuous problem.
-    if solver == "dense":
+    # Scipy implementations of both LSQR and LSMR can only be used with the standard l_2
+    # inner product. This is not sufficient here: We need the M inner product to make
+    # sure that the discrete residual is an approximation to the inner product of the
+    # continuous problem.
+    if solver == "minimization":
+
+        def f(x):
+            Ax = A.dot(x)
+            Exy = E.dot(x) - y0
+            return numpy.dot(Ax, sparse.linalg.spsolve(M, Ax)) + numpy.dot(Exy, Exy)
+
+        # Set x0 to be the average of y0
+        x0 = numpy.full(A.shape[0], numpy.sum(y0) / y0.shape[0])
+        out = scipy.optimize.minimize(f, x0, method="Powell")
+        x = out.x
+
+    elif solver == "dense":
         # Minv is dense, yikes!
-        M = M.toarray()
-        BTMinvB = numpy.dot(A.toarray().T, numpy.linalg.solve(M, A.toarray())) + E.T.dot(E)
-        # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
-        BTb = E.T.dot(y0)
-        x = numpy.linalg.solve(BTMinvB, BTb)
-
-        # compute residual
-        # r0 = E * x - y0
-        # alpha = numpy.dot(r0, r0)
-        # Ax = numpy.dot(A.toarray(), x)
-        # beta = numpy.dot(Ax, numpy.linalg.solve(M, Ax))
-        # print(alpha, beta, alpha + beta)
-        # exit(1)
-
-        # # Minv is dense, yikes!
-        # M = M.toarray()
-        # BTMinvB = sum(
-        #     numpy.dot(a.toarray().T, numpy.linalg.solve(M, a.toarray())) for a in A
-        # ) + E.T.dot(E)
-        # # BTMinvB = sum(a.T.dot(a) for a in A) + E.T.dot(E)
-        # BTb = E.T.dot(y0)
-        # x = sparse.linalg.spsolve(BTMinvB, BTb)
+        a = A.toarray()
+        m = M.toarray()
+        e = E.toarray()
+        AT_Minv_A = numpy.dot(a.T, numpy.linalg.solve(m, a)) + numpy.dot(e.T, e)
+        ET_b = numpy.dot(e.T, y0)
+        x = numpy.linalg.solve(AT_Minv_A, ET_b)
 
     else:
-        assert solver == "gmres", "Unknown solver '{}'.".format(solver)
+        assert solver == "sparse"
 
         def matvec(x):
-            # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
-            # or algebraic multigrid.
-            # Reshape for <https://github.com/scipy/scipy/issues/8772>.
-            s = sum([a.T.dot(sparse.linalg.spsolve(M, a.dot(x))) for a in A]).reshape(
-                x.shape
-            )
-            return s + E.T.dot(E.dot(x))
+            has_extra_dimension = False
+            if len(x.shape) == 2:
+                assert x.shape[1] == 1
+                x = x[:, 0]
+                has_extra_dimension = True
+            out = A.T.dot(sparse.linalg.spsolve(M, A.dot(x))) + E.T.dot(E.dot(x))
+            if has_extra_dimension:
+                out = out[:, None]
+            return out
 
-        matrix = sparse.linalg.LinearOperator(
-            (E.shape[1], E.shape[1]),
-            # matvec=lambda x: B.T.dot(B.dot(x))
-            matvec=matvec,
-        )
+        lop = sparse.linalg.LinearOperator((E.shape[1], E.shape[1]), matvec=matvec)
 
-        if prec_dirichlet_indices:
-            # As preconditioner for `A^T M^{-1} A`, `ML(B) M ML(B.T)` where ML
-            # is a multigrid solve and B is the weak form of `-\Delta u` with
-            # Dirichlet conditions in only a few points, chosen such that B is
-            # nonsingular. (Exactly how these points have to be chosen is still
-            # a matter of research, see
-            # <https://scicomp.stackexchange.com/q/29403/3980>.)
-            # B approximates A quite well, especially if the domain is
-            # polygonal and the indices are the corners of the polygon.
-
-            # Weak form of `-Delta u` without boundary conditions.
-            Aprec = _assemble_eigen(
-                +dot(dot(as_tensor(Eps), grad(u)), grad(v)) * dx
-                - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
-            ).sparray()
-            # Add Dirichlet conditions at a few points
-            Aprec = Aprec.tolil()
-            for k in prec_dirichlet_indices:
-                Aprec[k] = 0
-                Aprec[k, k] = 1
-            n = Aprec.shape[0]
-            Aprec = Aprec.tocsr()
-
-            ml = pyamg.smoothed_aggregation_solver(Aprec)
-            mlT = pyamg.smoothed_aggregation_solver(Aprec.T.tocsr())
-
-            def prec_matvec(b):
-                x0 = numpy.zeros(n)
-                b1 = mlT.solve(b, x0, tol=1.0e-12)
-                b2 = M.dot(b1)
-                x = ml.solve(b2, x0, tol=1.0e-12)
-                return x
-
-            prec = LinearOperator((n, n), matvec=prec_matvec)
-
-        else:
-            prec = None
-
-        # b = numpy.concatenate([numpy.zeros(sum(a.shape[0] for a in A)), y0])
-        BTb = E.T.dot(y0)
-
-        # Scipy's own GMRES.
-        # x, info = sparse.linalg.gmres(matrix, BTb, tol=1.0e-10)
-        # assert info == 0, \
-        #     'sparse.linalg.gmres not successful (error code {})'.format(info)
-
-        out = pykry.gmres(matrix, BTb, M=prec, tol=1.0e-10)
-        print(len(out.resnorms))
+        ET_b = E.T.dot(y0)
+        out = pykry.cg(lop, ET_b, tol=1.0e-10, maxiter=1000)
         x = out.xk
+
+        # import matplotlib.pyplot as plt
+        # plt.semilogy(out.resnorms)
+        # plt.grid()
+        # plt.show()
 
     u = Function(V)
     u.vector().set_local(x)

@@ -31,7 +31,7 @@ def test_1d_show():
         # "8": smoothfit.fit1d(x0, y0, a, b, 8, degree=1, lmbda=lmbda),
         # "16": smoothfit.fit1d(x0, y0, a, b, 16, degree=1, lmbda=lmbda),
         # "32": smoothfit.fit1d(x0, y0, a, b, 32, degree=1, lmbda=lmbda),
-        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
+        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, solver="sparse", lmbda=lmbda)
     }
 
     # ref = 1.5955290123404824
@@ -173,14 +173,16 @@ def test_2d(solver):
     # assert abs(val - ref) < 1.0e-10 * ref
 
     from dolfin import XDMFFile
-    xdmf = XDMFFile('temp.xdmf')
+
+    xdmf = XDMFFile("temp.xdmf")
     xdmf.write(u)
     return
 
 
 if __name__ == "__main__":
-    # test_1d_show()
-    test_2d("dense")
+    test_1d_show()
+    # test_2d("dense")
+    # test_2d("minimization")
     # test_2d('gmres')
     # test_1d_scale()
     # test_triangle()

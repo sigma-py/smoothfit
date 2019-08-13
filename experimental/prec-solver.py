@@ -237,8 +237,7 @@ def solve(mesh, Eps, degree):
         # betterspy.show(sum(A), colormap="viridis")
 
         AA = _assemble_eigen(
-            + dot(grad(u), grad(v)) * dx
-            - dot(grad(u), n) * v * ds
+            +dot(grad(u), grad(v)) * dx - dot(grad(u), n) * v * ds
         ).sparray()
 
         eigvals, eigvecs = scipy.sparse.linalg.eigs(AA, k=5, which="SM")
@@ -252,12 +251,13 @@ def solve(mesh, Eps, degree):
         print(eigvals[i])
 
         import meshio
+
         for k in range(3):
             meshio.write_points_cells(
                 f"eigval{k}.vtk",
                 points,
                 {"triangle": cells},
-                point_data={"ev": eigvecs[:, i][:, k]}
+                point_data={"ev": eigvecs[:, i][:, k]},
             )
         exit(1)
 
