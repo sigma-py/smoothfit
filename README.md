@@ -10,22 +10,39 @@ Smooth data fitting in N dimensions.
 [![GitHub stars](https://img.shields.io/github/stars/nschloe/smoothfit.svg?logo=github&label=Stars&logoColor=white)](https://github.com/nschloe/smoothfit)
 
 Given experimental data, it is often desirable to produce a function whose values match
-the data to some degree. A classical example is [polynomial
-regression](https://en.wikipedia.org/wiki/Polynomial_regression).  There are various
-pitfalls, however, most notoriously [Runge's
-phenomenon](https://en.wikipedia.org/wiki/Runge%27s_phenomenon).
+the data to some degree.  A classical example is [polynomial
+regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
+chosen because they are very simple, can be evaluated quickly, and [can be made to fit
+any function very closely](https://en.wikipedia.org/wiki/Stone–Weierstrass_theorem).
 
-This module implements an alternative approach based on the following idea.
+There are, however, some fundamental problems with this approach:
 
-Given a
+ * Your data might not actually fit a polynomial of low degree.
+ * [Runge's phenomenon](//en.wikipedia.org/wiki/Runge%27s_phenomenon).
 
-...
+This module implements an alternative approach to data fitting, starting from the
+general idea that
 
-The same idea is used in for data smoothing in signal processing
-(see, e.g., section 8.3 in [this
-document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squares_SP.pdf)).
+ * you want your data to fit the curve,
+ * you want your curve to be smooth.
+
+This can be molded into an optimization problem: You're looking for a
+twice-differentiable function _f_ that minimizes the expression
+
+    ∑<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> +  λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
+
+The first expression is small if the function matches the sample points; the second
+expression is small if _f_ is flat.
+
+(The same idea is used in for data smoothing in signal processing (see, e.g., section
+8.3 in [this
+document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squares_SP.pdf)).)
+
+This minimization problem can be discretized in terms of, e.g., finite elements.
+
 
 ### Some examples
+
 
 In one dimension, 
 

@@ -49,6 +49,37 @@ def test_1d_show():
     return
 
 
+def test_runge_show():
+    n = 21
+    x0 = numpy.linspace(-1.0, 1.0, n)
+    y0 = 1 / (1 + 25 * x0 ** 2)
+
+    a = -1.5
+    b = +1.5
+
+    plt.plot(x0, y0, "xk")
+    x = numpy.linspace(a, b, 201)
+    plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
+
+    # u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
+    # x = numpy.linspace(a, b, 201)
+    # vals = [u(xx) for xx in x]
+    # plt.plot(x, vals, "-", label="smooth fit")
+
+    for degree in [2, 4, 16]:
+        x = numpy.linspace(a, b, 201)
+        p = numpy.polyfit(x0, y0, degree)
+        vals = numpy.polyval(p, x)
+        plt.plot(x, vals, "-", label=f"polyfit {degree}")
+
+    plt.xlim(a, b)
+    plt.legend()
+    plt.ylim(-0.2, 1.2)
+    # plt.show()
+    plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
+    return
+
+
 # def test_1d_scale():
 #     n = 20
 #     # x0 = numpy.linspace(-1.0, 1.0, n)
@@ -121,7 +152,8 @@ def test_2d(solver):
 
 
 if __name__ == "__main__":
-    test_1d_show()
+    # test_1d_show()
+    test_runge_show()
     # test_2d("dense")
     # test_2d("minimization")
     # test_2d("sparse")
