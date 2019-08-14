@@ -51,6 +51,34 @@ Advantages of the new approach:
 | Polynomial fits. Oscillations at the boundary.  | Smooth fit.          |
 
 
+The plot can be recreated with
+
+```python
+import matplotlib.pyplot as plt
+import numpy
+import smoothfit
+
+n = 21
+x0 = numpy.linspace(-1.0, 1.0, n)
+y0 = 1 / (1 + 25 * x0 ** 2)
+a = -1.5
+b = +1.5
+
+# plot the sample points
+plt.plot(x0, y0, "xk")
+
+# create smooth fit
+u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
+
+# plot it
+x = numpy.linspace(a, b, 201)
+vals = [u(xx) for xx in x]
+plt.plot(x, vals, "-")
+
+plt.grid()
+plt.show()
+```
+
 ### Some examples
 
 
