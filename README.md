@@ -107,6 +107,12 @@ plt.grid()
 plt.show()
 ```
 
+If the data is noisy, `lmbda` needs to be chosen more carefully. If too small, the
+approximation tries to resolve _all_ data points, resulting in many small oscillations.
+If it's chosen too large, no details are resolved, not even those of the underlying
+data.
+
+
 #### Few samples
 
 <img src="https://nschloe.github.io/smoothfit/smoothfit-samples.svg" width="40%">
