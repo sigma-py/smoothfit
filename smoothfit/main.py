@@ -95,11 +95,11 @@ def _assemble_eigen(form):
 def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
     """We're trying to minimize
 
-       sum_i (f(xi) - yi)^2  +  lmbda ||Delta f||^2_{L^2(Omega)}
+       sum_i w_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
 
-    over all functions f from V. The discretization of this is
+    over all functions f from V with weights w_i, lmbda. The discretization of this is
 
-       ||E(f) - y||_2^2 + lmbda ||Delta_h f_h||^2_{M^{-1}}
+       ||W(E(f) - y)||_2^2 + ||lmbda Delta_h f_h||^2_{M^{-1}}
 
     where E is the (small and fat) evaluation operator at coordinates x_i, Delta_h is
     the discretization of Delta, and M is the mass matrix. One can either try and
@@ -121,6 +121,7 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
     # omega = assemble(1 * dx(mesh))
 
     A = _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
+    A *= lmbda
 
     E = _build_eval_matrix(V, x0)
 
@@ -136,7 +137,7 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
         a = A.toarray()
         m = M.toarray()
         e = E.toarray()
-        AT_Minv_A = lmbda * numpy.dot(a.T, numpy.linalg.solve(m, a)) + numpy.dot(e.T, e)
+        AT_Minv_A = numpy.dot(a.T, numpy.linalg.solve(m, a)) + numpy.dot(e.T, e)
         ET_b = numpy.dot(e.T, y0)
         x = numpy.linalg.solve(AT_Minv_A, ET_b)
 
@@ -144,7 +145,7 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
 
         def matvec(x):
             Ax = A.dot(x)
-            return lmbda * A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
+            return A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
 
         lop = pykry.LinearOperator((E.shape[1], E.shape[1]), float, dot=matvec)
 
@@ -161,7 +162,7 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
         def f(x):
             Ax = A.dot(x)
             Exy = E.dot(x) - y0
-            return lmbda * numpy.dot(Ax, spsolve(M, Ax)) + numpy.dot(Exy, Exy)
+            return numpy.dot(Ax, spsolve(M, Ax)) + numpy.dot(Exy, Exy)
 
         # Set x0 to be the average of y0
         x0 = numpy.full(A.shape[0], numpy.sum(y0) / y0.shape[0])

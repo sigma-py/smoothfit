@@ -80,6 +80,59 @@ def test_runge_show():
     return
 
 
+def test_noisy_runge():
+    n = 100
+    numpy.random.seed(1)
+    x0 = 2 * numpy.random.rand(n) - 1.0
+    y0 = 1 / (1 + 25 * x0 ** 2) + 1.0e-1 * (2 * numpy.random.rand(*x0.shape) - 1)
+
+    a = -1.5
+    b = +1.5
+
+    # for degree in [2, 4, 16]:
+    #     x = numpy.linspace(a, b, 201)
+    #     p = numpy.polyfit(x0, y0, degree)
+    #     vals = numpy.polyval(p, x)
+    #     plt.plot(x, vals, "-", label=f"polyfit {degree}")
+
+    for k, lmbda in enumerate(numpy.logspace(-3, 1, num=41)):
+        plt.plot(x0, y0, "xk")
+        x = numpy.linspace(a, b, 201)
+        # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
+
+        u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
+        x = numpy.linspace(a, b, 201)
+        vals = [u(xx) for xx in x]
+        plt.plot(x, vals, "-", color="#d62728")
+        plt.title(f"lmbda = {lmbda:.1e}")
+        plt.xlim(a, b)
+        plt.ylim(-0.2, 1.2)
+        # plt.show()
+        plt.savefig(f"smoothfit-lambda-{k:02d}.png", bbox_inches="tight", transparent=True)
+        plt.close()
+
+    # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
+    return
+
+
+def test_samples():
+    # From <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example>
+    x0 = numpy.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
+    y0 = numpy.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
+    u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
+
+    # plot the function
+    x = numpy.linspace(0, 4, 201)
+    vals = [u(xx) for xx in x]
+    plt.plot(x, vals, "-", label="smooth fit")
+    plt.plot(x0, y0, "xk")
+    plt.xlim(0, 4)
+    plt.ylim(0)
+    plt.grid()
+    plt.show()
+    return
+
+
 # def test_1d_scale():
 #     n = 20
 #     # x0 = numpy.linspace(-1.0, 1.0, n)
@@ -153,7 +206,9 @@ def test_2d(solver):
 
 if __name__ == "__main__":
     # test_1d_show()
-    test_runge_show()
+    # test_runge_show()
+    test_noisy_runge()
+    # test_samples()
     # test_2d("dense")
     # test_2d("minimization")
     # test_2d("sparse")
