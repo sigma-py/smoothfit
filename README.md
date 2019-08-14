@@ -2,12 +2,13 @@
 
 Smooth data fitting in N dimensions.
 
-[![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg)](https://circleci.com/gh/nschloe/smoothfit)
-[![codecov](https://img.shields.io/codecov/c/github/nschloe/smoothfit.svg)](https://codecov.io/gh/nschloe/smoothfit)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![smooth](https://img.shields.io/badge/smooth-yes-8209ba.svg)](https://github.com/nschloe/smoothfit)
-[![PyPi Version](https://img.shields.io/pypi/v/smoothfit.svg)](https://pypi.org/project/smoothfit)
-[![GitHub stars](https://img.shields.io/github/stars/nschloe/smoothfit.svg?logo=github&label=Stars&logoColor=white)](https://github.com/nschloe/smoothfit)
+[![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg?style=flat-square)](https://circleci.com/gh/nschloe/smoothfit)
+[![codecov](https://img.shields.io/codecov/c/github/nschloe/smoothfit.svg?style=flat-square)](https://codecov.io/gh/nschloe/smoothfit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
+[![smooth](https://img.shields.io/badge/smooth-yes-8209ba.svg?style=flat-square)](https://github.com/nschloe/smoothfit)
+[![PyPi Version](https://img.shields.io/pypi/v/smoothfit.svg?style=flat-square)](https://pypi.org/project/smoothfit)
+[![GitHub stars](https://img.shields.io/github/stars/nschloe/smoothfit.svg?style=flat-square&logo=github&label=Stars&logoColor=white)](https://github.com/nschloe/smoothfit)
+[![PyPi downloads](https://img.shields.io/pypi/dm/smoothfit.svg?style=flat-square)](https://pypistats.org/packages/smoothfit)
 
 Given experimental data, it is often desirable to produce a function whose values match
 the data to some degree.  A classical example is [polynomial
@@ -29,7 +30,7 @@ general idea that
 This can be molded into an optimization problem: You're looking for a
 twice-differentiable function _f_ that minimizes the expression
 
-∑<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> + λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
+Σ<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> + λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
 
 The first expression is small if the function matches the sample points; the second
 expression is small if _f_ is flat.
@@ -40,6 +41,10 @@ document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squar
 
 This minimization problem can be discretized in terms of, e.g., finite elements.
 
+Advantages of the new approach:
+
+ * No oscillations.
+ * Works in multiple dimensions.
 
 ### Some examples
 
