@@ -14,11 +14,11 @@ Given experimental data, it is often desirable to produce a function whose value
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
 
-<img src="https://nschloe.github.io/smoothfit/eq0.png" width="25%">
+<img src="https://nschloe.github.io/smoothfit/eq0.png" width="40%">
 
-(A similar idea is used in for data smoothing in signal processing (see, e.g.,
+(A similar idea is used in for data smoothing in signal processing; see, e.g.,
 section 8.3 in [this
-document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squares_SP.pdf)).)
+document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squares_SP.pdf).)
 
 Unlike [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression) or
@@ -32,11 +32,7 @@ multidimensional, too.
 
 #### Runge's example
 
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%">
-:-------------------:|:------------------:|:----------:|
-`lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
+<img src="https://nschloe.github.io/smoothfit/runge.svg" width="40%">
 
 ```python
 import matplotlib.pyplot as plt
@@ -75,7 +71,11 @@ in the output function `u`.
 
 #### Runge's example with noise
 
-<img src="https://nschloe.github.io/smoothfit/runge-smoothfit.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%">
+:-------------------:|:------------------:|:----------:|
+`lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
 
 ```python
 import matplotlib.pyplot as plt
@@ -93,7 +93,8 @@ plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)"
 numpy.random.seed(0)
 n = 51
 x0 = numpy.linspace(-1.0, 1.0, n)
-y0 = 1 / (1 + 25 * x0 ** 2) + 1.0e-1 * (2 * numpy.random.rand(n) - 1)
+y0 = 1 / (1 + 25 * x0 ** 2)
+y0 += 1.0e-1 * (2 * numpy.random.rand(n) - 1)
 plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
