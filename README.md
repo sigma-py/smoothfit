@@ -157,8 +157,6 @@ plt.grid()
 plt.show()
 ```
 
-
-
 #### Few samples
 
 <img src="https://nschloe.github.io/smoothfit/smoothfit-samples.svg" width="40%">
@@ -173,6 +171,37 @@ u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 ```
 Some noisy example data taken from
 [Wikipedia](https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example).
+
+
+#### A two-dimensional example
+
+<img src="https://nschloe.github.io/smoothfit/2d.png" width="40%">
+
+```python
+import meshzoo
+import numpy
+import smoothfit 
+
+n = 200
+numpy.random.seed(123)
+x0 = numpy.random.rand(n, 2) - 0.5
+y0 = numpy.cos(numpy.pi * numpy.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
+
+# create a triangle mesh for the square
+points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
+
+u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
+
+# Write the function to a file
+from dolfin import XDMFFile
+xdmf = XDMFFile("temp.xdmf")
+xdmf.write(u)
+```
+
+This example approximates a function from _R<sup>2</sup>_ to _R_ (without noise in the
+samples). Note that the absence of noise the data allows us to pick a rather small
+`lmbda` such that all sample points are approximated well.
+
 
 ### Comparison with other approaches
 

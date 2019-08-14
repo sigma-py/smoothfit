@@ -182,7 +182,7 @@ def test_2d(solver):
 
     import meshzoo
 
-    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 16, 16)
+    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
 
     # import pygmsh
     # geom = pygmsh.built_in.Geometry()
@@ -190,7 +190,7 @@ def test_2d(solver):
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-2, solver=solver)
+    u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-5, solver=solver)
 
     # ref = 4.411_214_155_799_310_5
     # val = assemble(u * u * dx)
@@ -207,8 +207,8 @@ if __name__ == "__main__":
     # test_1d_show()
     # test_runge_show()
     # test_noisy_runge()
-    test_samples()
-    # test_2d("dense")
+    # test_samples()
+    test_2d("dense-direct")
     # test_2d("minimization")
     # test_2d("sparse")
     # test_1d_scale()
