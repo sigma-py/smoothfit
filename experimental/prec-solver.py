@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 import itertools
 import time
 
@@ -65,14 +63,13 @@ def solve(mesh, Eps, degree):
 
     A = [
         _assemble_eigen(
-            +Constant(Eps[i, j]) * u.dx(i) * v.dx(j) * dx
-            - Constant(Eps[i, j]) * u.dx(i) * n[j] * v * ds
+            Constant(Eps[i, j]) * (u.dx(i) * v.dx(j) * dx - u.dx(i) * n[j] * v * ds)
         ).sparray()
         for j in range(gdim)
         for i in range(gdim)
     ]
 
-    assert_equality = True
+    assert_equality = False
     if assert_equality:
         # The sum of the `A`s is exactly that:
         n = FacetNormal(V.mesh())
@@ -236,18 +233,76 @@ def solve(mesh, Eps, degree):
 
     # Eigenvalues of the operators
     if True:
+        # import betterspy
+        # betterspy.show(sum(A), colormap="viridis")
+
+        AA = _assemble_eigen(
+            +dot(grad(u), grad(v)) * dx - dot(grad(u), n) * v * ds
+        ).sparray()
+
+        eigvals, eigvecs = scipy.sparse.linalg.eigs(AA, k=5, which="SM")
+
+        assert numpy.all(numpy.abs(eigvals.imag) < 1.0e-12)
+        eigvals = eigvals.real
+        assert numpy.all(numpy.abs(eigvecs.imag) < 1.0e-12)
+        eigvecs = eigvecs.real
+
+        i = numpy.argsort(eigvals)
+        print(eigvals[i])
+
+        import meshio
+
+        for k in range(3):
+            meshio.write_points_cells(
+                f"eigval{k}.vtk",
+                points,
+                {"triangle": cells},
+                point_data={"ev": eigvecs[:, i][:, k]},
+            )
+        exit(1)
+
+        # import betterspy
+        # betterspy.show(AA, colormap="viridis")
+        # print(numpy.sort(numpy.linalg.eigvals(AA.todense())))
+        exit(1)
+
+        Asum = sum(A).todense()
+        AsumT_Minv_Asum = numpy.dot(Asum.T, numpy.linalg.solve(M.toarray(), Asum))
+
+        # print(numpy.sort(numpy.linalg.eigvalsh(Asum)))
+        print(numpy.sort(numpy.linalg.eigvalsh(AsumT_Minv_Asum)))
+        exit(1)
+
+        # eigvals, eigvecs = numpy.linalg.eigh(Asum)
+        # i = numpy.argsort(eigvals)
+        # print(eigvals[i])
+        # exit(1)
+        # print(eigvals[:20])
+        # eigvals[eigvals < 1.0e-15] = 1.0e-15
+        #
+        # eigvals = numpy.sort(numpy.linalg.eigvalsh(sum(A).todense()))
+        # print(eigvals[:20])
+        # plt.semilogy(eigvals, ".", label="Asum")
+        # plt.legend()
+        # plt.grid()
+        # plt.show()
+        # exit(1)
+
         ATMinvAsum_eigs = numpy.sort(numpy.linalg.eigvalsh(ATMinvAsum))
-        ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2))
-        print(ATA2_eigs[:20])
+        print(ATMinvAsum_eigs[:20])
+        ATMinvAsum_eigs[ATMinvAsum_eigs < 0.0] = 1.0e-12
+        # ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2))
+        # print(ATA2_eigs[:20])
         plt.semilogy(ATMinvAsum_eigs, ".", label="ATMinvAsum")
-        plt.semilogy(ATA2_eigs, ".", label="ATA2")
+        # plt.semilogy(ATA2_eigs, ".", label="ATA2")
         plt.legend()
+        plt.grid()
         plt.show()
-        # Preconditioned eigenvalues
-        IATA_eigs = numpy.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
-        plt.semilogy(IATA_eigs, ".", label="precond eigenvalues")
-        plt.legend()
-        plt.show()
+        # # Preconditioned eigenvalues
+        # # IATA_eigs = numpy.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
+        # # plt.semilogy(IATA_eigs, ".", label="precond eigenvalues")
+        # # plt.legend()
+        # # plt.show()
         exit(1)
 
     # # Test with A only
@@ -358,17 +413,35 @@ def solve(mesh, Eps, degree):
     return out.xk
 
 
+def _create_dolfin_mesh(points, cells):
+    editor = MeshEditor()
+    mesh = Mesh()
+    # topological and geometrical dimension 2
+    editor.open(mesh, "triangle", 2, 2, 1)
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point[:2])
+    for k, cell in enumerate(cells.astype(numpy.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+    return mesh
+
+
 if __name__ == "__main__":
     # # 1d mesh
     # mesh = IntervalMesh(300, -1.0, +1.0)
     # Eps = numpy.array([[1.0]])
 
     # 2d mesh
-    import meshzoo
 
     # Triangle:
     # Dirichlet points _must_ be the corners of the triangle
-    points, cells = meshzoo.triangle(8, corners=[[0, 0], [1, 0], [0, 1]])
+    points, cells = meshzoo.triangle(10, corners=[[0, 0], [1, 0], [0, 1]])
+    # points, cells = meshzoo.rectangle(0.0, 1.0, 0.0, 1.0, 10, 10, zigzag=True)
+    # import meshplex
+    # meshplex.MeshTri(points, cells).show()
+    # points, cells = meshzoo.hexagon(3)
 
     # Triangle (unstructured).
     # Two nodes must be in a corner, the third as close as possible to the
@@ -459,17 +532,6 @@ if __name__ == "__main__":
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    editor = MeshEditor()
-    mesh = Mesh()
-    # topological and geometrical dimension 2
-    editor.open(mesh, "triangle", 2, 2, 1)
-    editor.init_vertices(len(points))
-    editor.init_cells(len(cells))
-    for k, point in enumerate(points):
-        editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(numpy.uintp)):
-        editor.add_cell(k, cell)
-    editor.close()
-    Eps = numpy.array([[2.0, 1.0], [1.0, 2.0]])
-
+    mesh = _create_dolfin_mesh(points, cells)
+    Eps = numpy.array([[1.0, 0.0], [0.0, 1.0]])
     solve(mesh, Eps, degree=1)
