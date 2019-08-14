@@ -11,73 +11,22 @@ Smooth data fitting in N dimensions.
 [![PyPi downloads](https://img.shields.io/pypi/dm/smoothfit.svg?style=flat-square)](https://pypistats.org/packages/smoothfit)
 
 Given experimental data, it is often desirable to produce a function whose values match
-the data to some degree. A classical example is [polynomial
-regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
-chosen because they are very simple, can be evaluated quickly, and [can be made to fit
-any function very closely](https://en.wikipedia.org/wiki/Stone–Weierstrass_theorem).
-
-There are, however, some fundamental problems with this approach:
-
- * Your data might not actually fit a polynomial of low degree.
- * [Runge's phenomenon](//en.wikipedia.org/wiki/Runge%27s_phenomenon).
-
-This module implements an alternative approach to data fitting, starting from the
-general idea that
-
- * you want your data to fit the curve,
- * you want your curve to be smooth.
-
-This can be molded into an optimization problem: You're looking for a
-twice-differentiable function _f_ that minimizes the expression
+the data to some degree. This package implements a robust approach to data fitting based
+on the minimization problem
 
 <img src="https://nschloe.github.io/smoothfit/eq0.png" width="25%">
 
-The first expression is small if _f_ is straight;
-the second expression is small if the function matches the sample points.
-
-(The same idea is used in for data smoothing in signal processing (see, e.g., section
-8.3 in [this
+(A similar idea is used in for data smoothing in signal processing (see, e.g.,
+section 8.3 in [this
 document](http://eeweb.poly.edu/iselesni/lecture_notes/least_squares/least_squares_SP.pdf)).)
 
-This minimization problem can be discretized in terms of, e.g., finite elements.
+Unlike [polynomial
+regression](https://en.wikipedia.org/wiki/Polynomial_regression) or
+[Gauss-Newton](https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm<Paste>),
+smoothfit makes no assumptions about the function other than that it is smooth.
 
-Advantages of the new approach:
-
- * No oscillations.
- * Works in multiple dimensions.
-
-| <img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="70%"> | <img src="https://nschloe.github.io/smoothfit/runge-smoothfit.svg" width="70%"> |
-| :----------:         |  :---------:         |
-| Polynomial fits. Oscillations at the boundary.  | Smooth fit.          |
-
-
-The plot can be recreated with
-
-```python
-import matplotlib.pyplot as plt
-import numpy
-import smoothfit
-
-n = 21
-x0 = numpy.linspace(-1.0, 1.0, n)
-y0 = 1 / (1 + 25 * x0 ** 2)
-a = -1.5
-b = +1.5
-
-# plot the sample points
-plt.plot(x0, y0, "xk")
-
-# create smooth fit
-u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
-
-# plot it
-x = numpy.linspace(a, b, 201)
-vals = [u(xx) for xx in x]
-plt.plot(x, vals, "-")
-
-plt.grid()
-plt.show()
-```
+The generality of the approach makes it suitable for function whose domain is
+multidimensional, too.
 
 ### Pics or it didn't happen
 
@@ -207,16 +156,29 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 
 #### Polynomial fitting/regression
 
+<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="40%">
+
+The classical approach to data fitting is [polynomial
+regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
+chosen because they are very simple, can be evaluated quickly, and [can be made to fit
+any function very closely](https://en.wikipedia.org/wiki/Stone–Weierstrass_theorem).
+
+There are, however, some fundamental problems:
+
+ * Your data might not actually fit a polynomial of low degree.
+ * [Runge's phenomenon](//en.wikipedia.org/wiki/Runge%27s_phenomenon).
+
+This above plot highlights the problem with oscillations.
+
+
 #### Fourier smoothing
+
+<img src="https://nschloe.github.io/smoothfit/fourier.svg" width="40%">
 
 One approach to data fitting with smoothing is to create a function with all data
 points, and simply cut off the high frequencies after Fourier transformation.
 
-Advantages:
-  * fast
-
-Disadvantages:
-  * Only works for evenly spaced samples
+This approach is fast, but only works for evenly spaced samples.
 
 ```python
 import matplotlib.pyplot as plt
