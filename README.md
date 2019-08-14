@@ -30,10 +30,10 @@ general idea that
 This can be molded into an optimization problem: You're looking for a
 twice-differentiable function _f_ that minimizes the expression
 
-Σ<sub>i</sub> (f(x<sub>i</sub>) - y<sub>i</sub>)<sup>2</sup> + λ ‖Δf‖<sup>2</sup><sub>L<sup>2</sup>(Ω)</sub> → min.
+<img src="https://nschloe.github.io/smoothfit/eq0.png" width="25%">
 
-The first expression is small if the function matches the sample points; the second
-expression is small if _f_ is flat.
+The first expression is small if _f_ is straight;
+the second expression is small if the function matches the sample points.
 
 (The same idea is used in for data smoothing in signal processing (see, e.g., section
 8.3 in [this
