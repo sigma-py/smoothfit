@@ -79,6 +79,101 @@ plt.grid()
 plt.show()
 ```
 
+### Pics or it didn't happen
+
+#### Runge's example
+
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="25%">
+:-------------------:|:------------------:|:----------:|
+`lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
+
+```python
+import matplotlib.pyplot as plt
+import numpy
+import smoothfit
+
+a = -1.5
+b = +1.5
+
+# plot original function
+x = numpy.linspace(a, b, 201)
+plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
+
+# 21 sample points
+x0 = numpy.linspace(-1.0, 1.0, 21)
+y0 = 1 / (1 + 25 * x0 ** 2)
+plt.plot(x0, y0, "xk")
+
+u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
+x = numpy.linspace(a, b, 201)
+vals = [u(xx) for xx in x]
+plt.plot(x, vals, "-", label="smooth fit")
+
+plt.ylim(-0.1)
+plt.grid()
+plt.show()
+```
+
+[Runge's example function](https://en.wikipedia.org/wiki/Runge%27s_phenomenon) is a
+tough nut for classical polynomial regression.
+
+If there is no noise in the input data, the parameter `lmbda` can be chosen quite small
+such that all data points are approximated well. Note that there are no oscillations
+in the output function `u`.
+
+
+#### Runge's example with noise
+
+<img src="https://nschloe.github.io/smoothfit/runge-smoothfit.svg" width="40%">
+
+```python
+import matplotlib.pyplot as plt
+import numpy
+import smoothfit
+
+a = -1.5
+b = +1.5
+
+# plot original function
+x = numpy.linspace(a, b, 201)
+plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
+
+# 21 sample points
+numpy.random.seed(0)
+n = 51
+x0 = numpy.linspace(-1.0, 1.0, n)
+y0 = 1 / (1 + 25 * x0 ** 2) + 1.0e-1 * (2 * numpy.random.rand(n) - 1)
+plt.plot(x0, y0, "xk")
+
+lmbda = 5.0e-2
+u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
+x = numpy.linspace(a, b, 201)
+vals = [u(xx) for xx in x]
+plt.plot(x, vals, "-", label="smooth fit")
+
+plt.grid()
+plt.show()
+```
+
+
+
+#### Few samples
+
+<img src="https://nschloe.github.io/smoothfit/smoothfit-samples.svg" width="40%">
+
+```python
+import numpy
+import smoothfit
+
+x0 = numpy.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
+y0 = numpy.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
+u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
+```
+Some noisy example data taken from
+[Wikipedia](https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example).
+
 ### Comparison with other approaches
 
 #### Polynomial fitting/regression
