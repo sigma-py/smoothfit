@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy
 
-
 numpy.random.seed(0)
 
 x0 = numpy.linspace(-1.0, 1.0, 1000)

@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy
 import pytest
+from dolfin import assemble, dx
 
 import smoothfit
 
 
-def test_1d_show():
+def test_1d(show=False):
     n = 20
     # x0 = numpy.linspace(-1.0, 1.0, n)
     numpy.random.seed(2)
@@ -23,28 +24,23 @@ def test_1d_show():
     b = +1.5
 
     lmbda = 1.0e-2
-    u = {
-        # "8": smoothfit.fit1d(x0, y0, a, b, 8, degree=1, lmbda=lmbda),
-        # "16": smoothfit.fit1d(x0, y0, a, b, 16, degree=1, lmbda=lmbda),
-        # "32": smoothfit.fit1d(x0, y0, a, b, 32, degree=1, lmbda=lmbda),
-        "64": smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
-    }
+    u = smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
 
-    # ref = 1.5955290123404824
-    # val = assemble(u * u * dx)
-    # assert abs(val - ref) < 1.0e-10 * ref
+    ref = 1.417_961_801_095_804_4
+    val = assemble(u * u * dx)
+    assert abs(val - ref) < 1.0e-10 * ref
 
-    # x = u.function_space().mesh().coordinates()
-    x = numpy.linspace(a, b, 201)
-    for h, uu in u.items():
-        vals = [uu(xx) for xx in x]
-        plt.plot(x, vals, "-", label=f"smooth fit {h}")
+    if show:
+        # x = u.function_space().mesh().coordinates()
+        x = numpy.linspace(a, b, 201)
+        vals = [u(xx) for xx in x]
+        plt.plot(x, vals, "-", label=f"smooth fit")
 
-    plt.plot(x0, y0, "xk", label="samples")
-    plt.plot(x, numpy.sin(numpy.pi * x), "-", color="0.8", label="original")
-    plt.xlim(a, b)
-    plt.legend()
-    plt.show()
+        plt.plot(x0, y0, "xk", label="samples")
+        plt.plot(x, numpy.sin(numpy.pi * x), "-", color="0.8", label="original")
+        plt.xlim(a, b)
+        plt.legend()
+        plt.show()
     return
 
 
@@ -169,7 +165,7 @@ def test_samples():
 
 
 @pytest.mark.parametrize("solver", ["dense-direct", "sparse-cg"])
-def test_2d(solver):
+def test_2d(solver, write_file=False):
     n = 200
     numpy.random.seed(123)
     x0 = numpy.random.rand(n, 2) - 0.5
@@ -196,19 +192,20 @@ def test_2d(solver):
     # val = assemble(u * u * dx)
     # assert abs(val - ref) < 1.0e-10 * ref
 
-    from dolfin import XDMFFile
+    if write_file:
+        from dolfin import XDMFFile
 
-    xdmf = XDMFFile("temp.xdmf")
-    xdmf.write(u)
+        xdmf = XDMFFile("temp.xdmf")
+        xdmf.write(u)
     return
 
 
 if __name__ == "__main__":
-    # test_1d_show()
+    # test_1d(True)
     # test_runge_show()
     # test_noisy_runge()
     # test_samples()
-    test_2d("dense-direct")
+    test_2d("dense-direct", write_file=True)
     # test_2d("minimization")
     # test_2d("sparse")
     # test_1d_scale()
