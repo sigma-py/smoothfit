@@ -71,9 +71,9 @@ in the output function `u`.
 
 #### Runge's example with noise
 
+<img src="https://nschloe.github.io/smoothfit/runge-noise-0001.svg" width="70%"> |
 <img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="70%">
+<img src="https://nschloe.github.io/smoothfit/runge-noise-02.svg" width="70%">
 :-------------------:|:------------------:|:----------:|
 `lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
 
