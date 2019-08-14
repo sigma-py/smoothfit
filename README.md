@@ -46,6 +46,11 @@ Advantages of the new approach:
  * No oscillations.
  * Works in multiple dimensions.
 
+| <img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="70%"> | <img src="https://nschloe.github.io/smoothfit/runge-smoothfit.svg" width="70%"> |
+| :----------:         |  :---------:         |
+| Polynomial fits. Oscillations at the boundary.  | Smooth fit.          |
+
+
 ### Some examples
 
 
