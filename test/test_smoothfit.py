@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy
+import pytest
 
 import smoothfit
-
-import pytest
 
 
 def test_1d_show():
@@ -95,21 +94,20 @@ def test_noisy_runge():
     #     vals = numpy.polyval(p, x)
     #     plt.plot(x, vals, "-", label=f"polyfit {degree}")
 
-    for k, lmbda in enumerate(numpy.logspace(-3, 1, num=41)):
-        plt.plot(x0, y0, "xk")
-        x = numpy.linspace(a, b, 201)
-        # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
+    plt.plot(x0, y0, "xk")
+    x = numpy.linspace(a, b, 201)
+    # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
-        u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
-        x = numpy.linspace(a, b, 201)
-        vals = [u(xx) for xx in x]
-        plt.plot(x, vals, "-", color="#d62728")
-        plt.title(f"lmbda = {lmbda:.1e}")
-        plt.xlim(a, b)
-        plt.ylim(-0.2, 1.2)
-        # plt.show()
-        plt.savefig(f"smoothfit-lambda-{k:02d}.png", bbox_inches="tight", transparent=True)
-        plt.close()
+    lmbda = 1.0e-3
+    u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
+    x = numpy.linspace(a, b, 201)
+    vals = [u(xx) for xx in x]
+    plt.plot(x, vals, "-", color="#d62728")
+    plt.title(f"lmbda = {lmbda:.1e}")
+    plt.xlim(a, b)
+    plt.ylim(-0.2, 1.2)
+    plt.grid()
+    plt.show()
 
     # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
     return
@@ -129,7 +127,8 @@ def test_samples():
     plt.xlim(0, 4)
     plt.ylim(0)
     plt.grid()
-    plt.show()
+    # plt.show()
+    plt.savefig("smoothfit-samples.svg", bbox_inches="tight", transparent=True)
     return
 
 
@@ -207,8 +206,8 @@ def test_2d(solver):
 if __name__ == "__main__":
     # test_1d_show()
     # test_runge_show()
-    test_noisy_runge()
-    # test_samples()
+    # test_noisy_runge()
+    test_samples()
     # test_2d("dense")
     # test_2d("minimization")
     # test_2d("sparse")

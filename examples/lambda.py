@@ -26,7 +26,9 @@ def lambda_effect():
         plt.xlim(a, b)
         plt.ylim(-0.2, 1.2)
         # plt.show()
-        plt.savefig(f"smoothfit-lambda-{k:02d}.png", bbox_inches="tight", transparent=True)
+        plt.savefig(
+            f"smoothfit-lambda-{k:02d}.png", bbox_inches="tight", transparent=True
+        )
         plt.close()
     return
 

@@ -11,7 +11,7 @@ Smooth data fitting in N dimensions.
 [![PyPi downloads](https://img.shields.io/pypi/dm/smoothfit.svg?style=flat-square)](https://pypistats.org/packages/smoothfit)
 
 Given experimental data, it is often desirable to produce a function whose values match
-the data to some degree.  A classical example is [polynomial
+the data to some degree. A classical example is [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
 chosen because they are very simple, can be evaluated quickly, and [can be made to fit
 any function very closely](https://en.wikipedia.org/wiki/Stone–Weierstrass_theorem).
@@ -79,12 +79,49 @@ plt.grid()
 plt.show()
 ```
 
-### Some examples
+### Comparison with other approaches
+
+#### Polynomial fitting/regression
+
+#### Fourier smoothing
+
+One approach to data fitting with smoothing is to create a function with all data
+points, and simply cut off the high frequencies after Fourier transformation.
+
+Advantages:
+  * fast
+
+Disadvantages:
+  * Only works for evenly spaced samples
+
+```python
+import matplotlib.pyplot as plt
+import numpy
 
 
-In one dimension, 
+numpy.random.seed(0)
 
+# original function
+x0 = numpy.linspace(-1.0, 1.0, 1000)
+y0 = 1 / (1 + 25 * x0 ** 2)
+plt.plot(x0, y0, color="k", alpha=0.2)
 
+# create sample points
+n = 51
+x1 = numpy.linspace(-1.0, 1.0, n)  # only works if samples are evenly spaced
+y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * numpy.random.rand(x1.shape[0]) - 1)
+plt.plot(x1, y1, "xk")
+
+# Cut off the high frequencies in the transformed space and transform back
+X = numpy.fft.rfft(y1)
+X[5:] = 0.0
+y2 = numpy.fft.irfft(X, n)
+#
+plt.plot(x1, y2, "-", label="5 lowest frequencies")
+
+plt.grid()
+plt.show()
+```
 
 ### Testing
 
