@@ -1,6 +1,5 @@
 <p align="center">
   <a href="https://github.com/nschloe/smoothfit"><img alt="smoothfit" src="https://nschloe.github.io/smoothfit/logo.svg" width="60%"></a>
-  <p align="center">Smooth data fitting.</p>
 </p>
 
 [![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg?style=flat-square)](https://circleci.com/gh/nschloe/smoothfit)
