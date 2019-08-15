@@ -68,7 +68,7 @@ def test_runge_show():
         plt.plot(x, vals, "-", label=f"polyfit {degree}")
 
     plt.xlim(a, b)
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     plt.grid()
     plt.gca().set_aspect("equal")
     plt.ylim(-0.2, 1.2)
