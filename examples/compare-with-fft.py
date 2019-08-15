@@ -23,5 +23,7 @@ X = numpy.fft.rfft(y1)
 X[5:] = 0.0
 y2 = numpy.fft.irfft(X, n)
 
+plt.gca().set_aspect("equal")
 plt.plot(x1, y2, "-", label="5 lowest frequencies")
-plt.show()
+# plt.show()
+plt.savefig("fourier.svg", bbox_inches="tight", transparent=True)

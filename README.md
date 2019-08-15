@@ -1,6 +1,5 @@
 <p align="center">
   <a href="https://github.com/nschloe/smoothfit"><img alt="smoothfit" src="https://nschloe.github.io/smoothfit/logo.svg" width="60%"></a>
-  <p align="center">Smooth data fitting.</p>
 </p>
 
 [![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg?style=flat-square)](https://circleci.com/gh/nschloe/smoothfit)
@@ -33,7 +32,7 @@ multidimensional, too.
 
 #### Runge's example
 
-<img src="https://nschloe.github.io/smoothfit/runge.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/runge.svg" width="60%">
 
 ```python
 import matplotlib.pyplot as plt
@@ -72,9 +71,9 @@ in the output function `u`.
 
 #### Runge's example with noise
 
-<img src="https://nschloe.github.io/smoothfit/runge-noise-0001.svg" width="90%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-05.svg" width="90%"> |
-<img src="https://nschloe.github.io/smoothfit/runge-noise-02.svg" width="90%">
+<img src="https://nschloe.github.io/smoothfit/runge-noise-0001.svg" width="95%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-005.svg" width="95%"> |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-02.svg" width="95%">
 :-------------------:|:------------------:|:----------:|
 `lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
 
@@ -164,7 +163,7 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 
 #### Polynomial fitting/regression
 
-<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="60%">
 
 The classical approach to data fitting is [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
@@ -181,7 +180,7 @@ This above plot highlights the problem with oscillations.
 
 #### Fourier smoothing
 
-<img src="https://nschloe.github.io/smoothfit/fourier.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/fourier.svg" width="60%">
 
 One approach to data fitting with smoothing is to create a function with all data
 points, and simply cut off the high frequencies after Fourier transformation.
