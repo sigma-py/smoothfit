@@ -33,7 +33,7 @@ multidimensional, too.
 
 #### Runge's example
 
-<img src="https://nschloe.github.io/smoothfit/runge.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/runge.svg" width="60%">
 
 ```python
 import matplotlib.pyplot as plt
@@ -164,7 +164,7 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 
 #### Polynomial fitting/regression
 
-<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="60%">
 
 The classical approach to data fitting is [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
@@ -181,7 +181,7 @@ This above plot highlights the problem with oscillations.
 
 #### Fourier smoothing
 
-<img src="https://nschloe.github.io/smoothfit/fourier.svg" width="40%">
+<img src="https://nschloe.github.io/smoothfit/fourier.svg" width="60%">
 
 One approach to data fitting with smoothing is to create a function with all data
 points, and simply cut off the high frequencies after Fourier transformation.
