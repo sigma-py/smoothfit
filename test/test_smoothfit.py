@@ -69,43 +69,40 @@ def test_runge_show():
 
     plt.xlim(a, b)
     plt.legend()
+    plt.grid()
+    plt.gca().set_aspect("equal")
     plt.ylim(-0.2, 1.2)
-    # plt.show()
-    plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
+    plt.show()
+    # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
     return
 
 
 def test_noisy_runge():
     n = 100
-    numpy.random.seed(1)
+    numpy.random.seed(3)
     x0 = 2 * numpy.random.rand(n) - 1.0
-    y0 = 1 / (1 + 25 * x0 ** 2) + 1.0e-1 * (2 * numpy.random.rand(*x0.shape) - 1)
+    y0 = 1 / (1 + 25 * x0 ** 2)
+    y0 += 1.0e-1 * (2 * numpy.random.rand(*x0.shape) - 1)
 
     a = -1.5
     b = +1.5
-
-    # for degree in [2, 4, 16]:
-    #     x = numpy.linspace(a, b, 201)
-    #     p = numpy.polyfit(x0, y0, degree)
-    #     vals = numpy.polyval(p, x)
-    #     plt.plot(x, vals, "-", label=f"polyfit {degree}")
 
     plt.plot(x0, y0, "xk")
     x = numpy.linspace(a, b, 201)
     # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
-    lmbda = 1.0e-3
+    lmbda = 0.2
     u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
     x = numpy.linspace(a, b, 201)
     vals = [u(xx) for xx in x]
-    plt.plot(x, vals, "-", color="#d62728")
-    plt.title(f"lmbda = {lmbda:.1e}")
+    plt.plot(x, vals, "-")
+    # plt.title(f"lmbda = {lmbda:.1e}")
     plt.xlim(a, b)
     plt.ylim(-0.2, 1.2)
     plt.grid()
-    plt.show()
-
-    # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
+    plt.gca().set_aspect("equal")
+    # plt.show()
+    plt.savefig("runge-noise-02.svg", bbox_inches="tight", transparent=True)
     return
 
 
@@ -208,10 +205,10 @@ def test_2d(solver, write_file=False):
 
 if __name__ == "__main__":
     # test_1d(True)
-    # test_runge_show()
+    test_runge_show()
     # test_noisy_runge()
     # test_samples()
-    test_2d("dense-direct", write_file=True)
+    # test_2d("dense-direct", write_file=True)
     # test_2d("minimization")
     # test_2d("sparse")
     # test_1d_scale()
