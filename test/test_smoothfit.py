@@ -6,7 +6,8 @@ from dolfin import assemble, dx
 import smoothfit
 
 
-def test_1d(show=False):
+@pytest.mark.parametrize("solver", ["dense-direct", "sparse-cg", "Nelder-Mead"])
+def test_1d(solver, show=False):
     n = 20
     # x0 = numpy.linspace(-1.0, 1.0, n)
     numpy.random.seed(2)
@@ -24,9 +25,13 @@ def test_1d(show=False):
     b = +1.5
 
     lmbda = 1.0e-2
-    u = smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda)
+    u = smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda, solver=solver)
 
-    ref = 1.417_961_801_095_804_4
+    if solver == "Nelder-Mead":
+        ref = 0.659_143_389_243_738_2
+    else:
+        ref = 1.417_961_801_095_804_4
+
     val = assemble(u * u * dx)
     assert abs(val - ref) < 1.0e-10 * ref
 
