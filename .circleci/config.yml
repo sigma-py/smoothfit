@@ -21,11 +21,16 @@ jobs:
       - run: apt-get update
       # For some reason ssh is needed; probably dolfin parallel?
       - run: apt-get install -y python3-pip python3-dolfin ssh
+      - run: pip3 install -U pytest pytest-cov
       - checkout
+      - run: pip3 install .
+      - run: pip3 install -r test_requirements.txt
       # The actual test
-      - run: |
-          pip3 install tox
-          tox
+      - run:
+          cmd: pytest --cov smoothfit
+          working_directory: test
+          env:
+            MPLBACKEND: Agg
       # submit to codecov
       - run: |
           sudo apt-get install -y curl
