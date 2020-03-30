@@ -6,15 +6,18 @@ jobs:
       - image: circleci/python:3
     steps:
       - checkout
-      - run: pip install black flake8
-      - run: black --check .
-      - run: flake8 setup.py smoothfit/ test/*.py
+      - run: |
+          pip install black
+          black --check .
+      - run: |
+          pip install flake8
+          flake8 setup.py smoothfit/ test/*.py
   build:
     working_directory: ~/work
     docker:
       - image: circleci/python:3
     steps:
-      - run: apt-get update
+      - run: sudo apt-get update
       # For some reason ssh is needed; probably dolfin parallel?
       - run: apt-get install -y python3-pip python3-dolfin ssh
       - checkout
@@ -23,8 +26,9 @@ jobs:
           pip install tox
           tox
       # submit to codecov
-      - run: apt-get install -y curl
-      - run: bash <(curl -s https://codecov.io/bash)
+      - run: |
+          sudo apt-get install -y curl
+          bash <(curl -s https://codecov.io/bash)
 
 workflows:
   version: 2
