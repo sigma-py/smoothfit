@@ -27,7 +27,7 @@ jobs:
       - run: pip3 install -r test_requirements.txt
       # The actual test
       - run:
-          cmd: pytest --cov smoothfit
+          command: pytest --cov smoothfit
           working_directory: test
           env:
             MPLBACKEND: Agg
