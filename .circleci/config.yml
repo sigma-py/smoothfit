@@ -15,11 +15,12 @@ jobs:
   build:
     working_directory: ~/work
     docker:
-      - image: circleci/python:3
+      # This has to be an ubuntu base since we need python3-dolfin from system
+      - image: ubuntu:19.04
     steps:
-      - run: sudo apt-get update
+      - run: apt-get update
       # For some reason ssh is needed; probably dolfin parallel?
-      - run: sudo apt-get install -y python3-pip python3-dolfin ssh
+      - run: apt-get install -y python3-dolfin ssh
       - checkout
       # The actual test
       - run: |
