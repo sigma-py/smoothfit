@@ -1,7 +1,10 @@
-__version__ = "0.1.1"
-__author__ = "Nico Schlömer"
-__author_email__ = "nico.schloemer@gmail.com"
-__copyright__ = "Copyright (c) 2018-2019, {} <{}>".format(__author__, __author_email__)
-__website__ = "https://github.com/nschloe/smoothfit"
-__license__ = "License :: OSI Approved :: MIT License"
-__status__ = "Development Status :: 3 - Alpha"
+try:
+    # Python 3.8
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
+try:
+    __version__ = metadata.version("smoothfit")
+except Exception:
+    __version__ = "unknown"
