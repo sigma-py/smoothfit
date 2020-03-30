@@ -32,9 +32,8 @@ jobs:
           env:
             MPLBACKEND: Agg
       # submit to codecov
-      - run: |
-          sudo apt-get install -y curl
-          bash <(curl -s https://codecov.io/bash)
+      - run: sudo apt-get install -y curl
+      - run: bash <(curl -s https://codecov.io/bash)
 
 workflows:
   version: 2
