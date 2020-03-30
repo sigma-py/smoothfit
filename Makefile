@@ -32,4 +32,4 @@ black:
 
 lint:
 	black --check .
-	flake8 .
+	flake8 setup.py smoothfit/ test/*.py

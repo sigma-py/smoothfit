@@ -19,8 +19,6 @@ from dolfin import (
     solve,
 )
 
-import meshzoo
-
 
 def create_dolfin_mesh(points, cells):
     # https://bitbucket.org/fenics-project/dolfin/issues/845/initialize-mesh-from-vertices

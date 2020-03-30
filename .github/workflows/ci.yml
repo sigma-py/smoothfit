@@ -13,7 +13,7 @@ jobs:
     - name: Lint with flake8
       run: |
         pip install flake8
-        flake8 .
+        flake8 setup.py smoothfit/ test/*.py
     - name: Lint with black
       run: |
         pip install black
