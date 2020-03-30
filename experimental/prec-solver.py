@@ -208,7 +208,7 @@ def solve(mesh, Eps, degree):
                 # plt.plot(dofs_x[min_combi, 0], dofs_x[min_combi, 1], 'or')
                 plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], "ob")
                 plt.gca().set_aspect("equal")
-                plt.title("smallest eigenvalue: {}".format(max_val))
+                plt.title(f"smallest eigenvalue: {max_val}")
                 plt.show()
 
             # # if True:
@@ -227,7 +227,7 @@ def solve(mesh, Eps, degree):
         # plt.plot(dofs_x[min_combi, 0], dofs_x[min_combi, 1], 'or')
         plt.plot(dofs_x[max_combi, 0], dofs_x[max_combi, 1], "ob")
         plt.gca().set_aspect("equal")
-        plt.title("final smallest eigenvalue: {}".format(max_val))
+        plt.title(f"final smallest eigenvalue: {max_val}")
         plt.show()
         exit(1)
 
