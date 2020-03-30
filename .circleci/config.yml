@@ -24,7 +24,7 @@ jobs:
       - checkout
       # The actual test
       - run: |
-          pip install tox
+          pip3 install tox
           tox
       # submit to codecov
       - run: |
