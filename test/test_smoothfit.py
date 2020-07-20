@@ -39,7 +39,7 @@ def test_1d(solver, show=False):
         # x = u.function_space().mesh().coordinates()
         x = numpy.linspace(a, b, 201)
         vals = [u(xx) for xx in x]
-        plt.plot(x, vals, "-", label=f"smooth fit")
+        plt.plot(x, vals, "-", label="smooth fit")
 
         plt.plot(x0, y0, "xk", label="samples")
         plt.plot(x, numpy.sin(numpy.pi * x), "-", color="0.8", label="original")
