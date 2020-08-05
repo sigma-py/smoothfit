@@ -23,7 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        # only test 3.6 for dolfin availability
+        python-version: [3.6]
     steps:
     - uses: actions/setup-python@v2
       with:
@@ -37,5 +38,5 @@ jobs:
         pip install tox
         tox
     - name: Submit to codecov
-      if: ${{ matrix.python-version == '3.8' }}
+      if: ${{ matrix.python-version == '3.6' }}
       run: bash <(curl -s https://codecov.io/bash)
