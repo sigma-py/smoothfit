@@ -21,14 +21,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # only test 3.6 for dolfin availability
-        python-version: [3.6]
     steps:
-    - uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
     - uses: actions/checkout@v2
     # blas for numpy
     - name: Install system dependencies
@@ -38,5 +31,4 @@ jobs:
         pip install tox
         tox
     - name: Submit to codecov
-      if: ${{ matrix.python-version == '3.6' }}
       run: bash <(curl -s https://codecov.io/bash)
