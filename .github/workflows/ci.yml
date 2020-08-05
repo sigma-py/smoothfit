@@ -32,6 +32,8 @@ jobs:
     - name: Update pip
       run: |
         python3 -m pip install --upgrade pip
+    - name: Install some dependencies
+      run: python3 -m pip install matplotlib meshzoo
     - name: Install package
       run: |
         python3 -m pip install .
