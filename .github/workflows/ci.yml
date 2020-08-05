@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Add FEniCS PPA
+      run: |
+        sudo add-apt-repository ppa:fenics-packages/fenics
+        sudo apt-get update
     # blas for numpy
     - name: Install system dependencies
       run: sudo apt-get install -y libblas-dev python3-dolfin
