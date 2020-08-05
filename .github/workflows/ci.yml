@@ -28,7 +28,7 @@ jobs:
       run: sudo apt-get install -y libblas-dev python3-dolfin
     - name: Add ~/.local/bin to $PATH
       # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-      run: echo "::add-path::/home/runner/.local/binr"
+      run: echo "::add-path::/home/runner/.local/bin"
     - name: Update pip
       run: |
         python3 -m pip install --upgrade pip
