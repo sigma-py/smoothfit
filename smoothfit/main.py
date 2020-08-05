@@ -1,4 +1,5 @@
 import numpy
+import pykry
 import scipy.optimize
 from dolfin import (
     BoundingBoxTree,
@@ -21,8 +22,6 @@ from dolfin import (
 )
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
-
-import pykry
 
 
 def _build_eval_matrix(V, points):

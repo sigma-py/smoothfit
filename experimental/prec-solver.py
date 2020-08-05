@@ -1,7 +1,9 @@
 import itertools
 import time
 
+import krypy
 import matplotlib.pyplot as plt
+import meshzoo
 import numpy
 import pyamg
 import scipy
@@ -31,9 +33,6 @@ from dolfin import (
 from scipy import sparse
 from scipy.optimize import minimize
 from scipy.sparse.linalg import LinearOperator
-
-import krypy
-import meshzoo
 
 
 def _assemble_eigen(form, bcs=None):

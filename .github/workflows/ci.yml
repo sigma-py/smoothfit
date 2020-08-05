@@ -6,14 +6,14 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-python@v1
+    - uses: actions/setup-python@v2
       with:
         python-version: "3.x"
     - uses: actions/checkout@v2
     - name: Lint with flake8
       run: |
         pip install flake8
-        flake8 setup.py smoothfit/ test/*.py
+        flake8 smoothfit/ test/
     - name: Lint with black
       run: |
         pip install black
@@ -21,20 +21,35 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.6, 3.7, 3.8]
     steps:
-    - uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
     - uses: actions/checkout@v2
-    # blas for numpy
-    - name: Install dependencies
-      run: sudo apt-get install -y libblas-dev python3-dolfin
-    - name: Test with tox
+    - name: Add FEniCS PPA
       run: |
-        pip install tox
-        tox
-    # - name: Submit to codecov
-    #   run: bash <(curl -s https://codecov.io/bash)
+        sudo add-apt-repository ppa:fenics-packages/fenics
+        sudo apt-get update
+    # blas for numpy
+    - name: Install system dependencies
+      run: sudo apt-get install -y libblas-dev python3-dolfin
+    - name: Add ~/.local/bin to $PATH
+      # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+      run: echo "::add-path::/home/runner/.local/bin"
+    - name: Update pip
+      run: |
+        python3 -m pip install --upgrade pip
+    - name: Install package
+      run: |
+        python3 -m pip install .
+    - name: Install test dependencies
+      run: python3 -m pip install matplotlib meshzoo
+    - name: Test with pytest
+      run: |
+        python3 -m pip install pytest pytest-cov
+        cd test/
+        pytest --cov smoothfit
+    # Can't access system dolfin for some reason:
+    # - name: Test with tox
+    #   run: |
+    #     python3 -m pip install tox
+    #     tox
+    - name: Submit to codecov
+      run: bash <(curl -s https://codecov.io/bash)
