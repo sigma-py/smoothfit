@@ -36,19 +36,20 @@ jobs:
     - name: Update pip
       run: |
         python3 -m pip install --upgrade pip
-    # - name: Install package
-    #   run: |
-    #     python3 -m pip install .
-    # - name: Install test dependencies
-    #   run: python3 -m pip install matplotlib meshzoo
-    # - name: Test with pytest
-    #   run: |
-    #     python3 -m pip install pytest
-    #     cd test/
-    #     pytest
-    - name: Test with tox
+    - name: Install package
       run: |
-        python3 -m pip install tox
-        tox
+        python3 -m pip install .
+    - name: Install test dependencies
+      run: python3 -m pip install matplotlib meshzoo
+    - name: Test with pytest
+      run: |
+        python3 -m pip install pytest
+        cd test/
+        pytest
+    # Can't access system dolfin for some reason:
+    # - name: Test with tox
+    #   run: |
+    #     python3 -m pip install tox
+    #     tox
     - name: Submit to codecov
       run: bash <(curl -s https://codecov.io/bash)
