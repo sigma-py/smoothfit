@@ -43,9 +43,9 @@ jobs:
       run: python3 -m pip install matplotlib meshzoo
     - name: Test with pytest
       run: |
-        python3 -m pip install pytest
+        python3 -m pip install pytest pytest-cov
         cd test/
-        pytest
+        pytest --cov smoothfit
     # Can't access system dolfin for some reason:
     # - name: Test with tox
     #   run: |
