@@ -32,10 +32,17 @@ jobs:
     - name: Update pip
       run: |
         python3 -m pip install --upgrade pip
-        pip3 --version
-    - name: Test with tox
+    - name: Install package
       run: |
-        python3 -m pip install tox
-        tox
+        python3 -m pip install .
+    - name: Test with pytest
+      run: |
+        python3 -m pip install pytest
+        cd test/
+        pytest
+    # - name: Test with tox
+    #   run: |
+    #     python3 -m pip install tox
+    #     tox
     - name: Submit to codecov
       run: bash <(curl -s https://codecov.io/bash)
