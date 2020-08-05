@@ -26,9 +26,11 @@ jobs:
     # blas for numpy
     - name: Install system dependencies
       run: sudo apt-get install -y libblas-dev python3-dolfin
+    - name: Add ~/.local/bin to $PATH
+      run: export PATH=$PATH:~/.local/bin
     - name: Update pip
       run: |
-        python3 -m pip install -U pip
+        python3 -m pip install --upgrade pip
         pip3 --version
     - name: Test with tox
       run: |
