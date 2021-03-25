@@ -209,8 +209,8 @@ def test_2d(solver, write_file=False):
 
 
 if __name__ == "__main__":
-    # test_1d(True)
-    test_runge_show()
+    test_1d(True)
+    # test_runge_show()
     # test_noisy_runge()
     # test_samples()
     # test_2d("dense-direct", write_file=True)
