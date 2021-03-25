@@ -25,9 +25,8 @@ from scipy.sparse.linalg import spsolve
 
 
 def _build_eval_matrix(V, points):
-    """Build the sparse m-by-n matrix that maps a coefficient set for a
-    function in V to the values of that function at m given points.
-    """
+    """Build the sparse m-by-n matrix that maps a coefficient set for a function in V to
+    the values of that function at m given points."""
     # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
     mesh = V.mesh()
 
@@ -91,7 +90,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
+def fit(x0, y0, V, lmbda, solver):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
