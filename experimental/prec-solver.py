@@ -4,7 +4,7 @@ import time
 import krypy
 import matplotlib.pyplot as plt
 import meshzoo
-import numpy
+import numpy as np
 import pyamg
 import scipy
 from dolfin import (
@@ -77,7 +77,7 @@ def solve(mesh, Eps, degree):
             - dot(dot(as_tensor(Eps), grad(u)), n) * v * ds
         ).sparray()
         diff = AA - sum(A)
-        assert numpy.all(abs(diff.data) < 1.0e-14)
+        assert np.all(abs(diff.data) < 1.0e-14)
         #
         # ATAsum = sum(a.T.dot(a) for a in A)
         # diff = AA.T.dot(AA) - ATAsum
@@ -86,7 +86,7 @@ def solve(mesh, Eps, degree):
         # # betterspy.show(AA.T.dot(AA))
         # # betterspy.show(ATAsum - AA.T.dot(AA))
         # print(diff.data)
-        # assert numpy.all(abs(diff.data) < 1.0e-14)
+        # assert np.all(abs(diff.data) < 1.0e-14)
 
     tol = 1.0e-10
 
@@ -121,8 +121,7 @@ def solve(mesh, Eps, degree):
     M = _assemble_eigen(u * v * dx).sparray()
 
     ATMinvAsum = sum(
-        numpy.dot(a.toarray().T, numpy.linalg.solve(M.toarray(), a.toarray()))
-        for a in A
+        np.dot(a.toarray().T, np.linalg.solve(M.toarray(), a.toarray())) for a in A
     )
 
     AA2 = _assemble_eigen(
@@ -136,7 +135,7 @@ def solve(mesh, Eps, degree):
         #     ]
     ).sparray()
 
-    ATA2 = numpy.dot(AA2.toarray().T, numpy.linalg.solve(M.toarray(), AA2.toarray()))
+    ATA2 = np.dot(AA2.toarray().T, np.linalg.solve(M.toarray(), AA2.toarray()))
 
     # Find combination of Dirichlet points:
     if False:
@@ -148,11 +147,11 @@ def solve(mesh, Eps, degree):
         it = 0
         # get boundary indices
         d = DirichletBC(V, Constant(0.0), "on_boundary")
-        boundary_idx = numpy.sort(list(d.get_boundary_values().keys()))
-        # boundary_idx = numpy.arange(V.dim())
+        boundary_idx = np.sort(list(d.get_boundary_values().keys()))
+        # boundary_idx = np.arange(V.dim())
         # print(boundary_idx)
         # pick some at random
-        # idx = numpy.sort(numpy.random.choice(boundary_idx, size=3, replace=False))
+        # idx = np.sort(np.random.choice(boundary_idx, size=3, replace=False))
         for idx in itertools.combinations(boundary_idx, 3):
             it += 1
             print()
@@ -167,10 +166,8 @@ def solve(mesh, Eps, degree):
             n = AA3.shape[0]
             AA3 = AA3.tocsr()
 
-            ATA2 = numpy.dot(
-                AA3.toarray().T, numpy.linalg.solve(M.toarray(), AA3.toarray())
-            )
-            vals = numpy.sort(numpy.linalg.eigvalsh(ATA2))
+            ATA2 = np.dot(AA3.toarray().T, np.linalg.solve(M.toarray(), AA3.toarray()))
+            vals = np.sort(np.linalg.eigvalsh(ATA2))
             if vals[0] < 0.0:
                 continue
 
@@ -179,7 +176,7 @@ def solve(mesh, Eps, degree):
             #     matvec=lambda x: _spsolve(AA3, M.dot(_spsolve(AA3.T.tocsr(), x)))
             #     )
             # vals, _ = scipy.sparse.linalg.eigsh(op, k=3, which='LM')
-            # vals = numpy.sort(1/vals[::-1])
+            # vals = np.sort(1/vals[::-1])
             # print(vals)
 
             print(idx)
@@ -196,7 +193,7 @@ def solve(mesh, Eps, degree):
 
             if is_updated:
                 # vals, _ = scipy.sparse.linalg.eigsh(op, k=10, which='LM')
-                # vals = numpy.sort(1/vals[::-1])
+                # vals = np.sort(1/vals[::-1])
                 # print(vals)
                 is_updated = False
                 # print(min_val, min_combi)
@@ -241,12 +238,12 @@ def solve(mesh, Eps, degree):
 
         eigvals, eigvecs = scipy.sparse.linalg.eigs(AA, k=5, which="SM")
 
-        assert numpy.all(numpy.abs(eigvals.imag) < 1.0e-12)
+        assert np.all(np.abs(eigvals.imag) < 1.0e-12)
         eigvals = eigvals.real
-        assert numpy.all(numpy.abs(eigvecs.imag) < 1.0e-12)
+        assert np.all(np.abs(eigvecs.imag) < 1.0e-12)
         eigvecs = eigvecs.real
 
-        i = numpy.argsort(eigvals)
+        i = np.argsort(eigvals)
         print(eigvals[i])
 
         import meshio
@@ -262,24 +259,24 @@ def solve(mesh, Eps, degree):
 
         # import betterspy
         # betterspy.show(AA, colormap="viridis")
-        # print(numpy.sort(numpy.linalg.eigvals(AA.todense())))
+        # print(np.sort(np.linalg.eigvals(AA.todense())))
         exit(1)
 
         Asum = sum(A).todense()
-        AsumT_Minv_Asum = numpy.dot(Asum.T, numpy.linalg.solve(M.toarray(), Asum))
+        AsumT_Minv_Asum = np.dot(Asum.T, np.linalg.solve(M.toarray(), Asum))
 
-        # print(numpy.sort(numpy.linalg.eigvalsh(Asum)))
-        print(numpy.sort(numpy.linalg.eigvalsh(AsumT_Minv_Asum)))
+        # print(np.sort(np.linalg.eigvalsh(Asum)))
+        print(np.sort(np.linalg.eigvalsh(AsumT_Minv_Asum)))
         exit(1)
 
-        # eigvals, eigvecs = numpy.linalg.eigh(Asum)
-        # i = numpy.argsort(eigvals)
+        # eigvals, eigvecs = np.linalg.eigh(Asum)
+        # i = np.argsort(eigvals)
         # print(eigvals[i])
         # exit(1)
         # print(eigvals[:20])
         # eigvals[eigvals < 1.0e-15] = 1.0e-15
         #
-        # eigvals = numpy.sort(numpy.linalg.eigvalsh(sum(A).todense()))
+        # eigvals = np.sort(np.linalg.eigvalsh(sum(A).todense()))
         # print(eigvals[:20])
         # plt.semilogy(eigvals, ".", label="Asum")
         # plt.legend()
@@ -287,10 +284,10 @@ def solve(mesh, Eps, degree):
         # plt.show()
         # exit(1)
 
-        ATMinvAsum_eigs = numpy.sort(numpy.linalg.eigvalsh(ATMinvAsum))
+        ATMinvAsum_eigs = np.sort(np.linalg.eigvalsh(ATMinvAsum))
         print(ATMinvAsum_eigs[:20])
         ATMinvAsum_eigs[ATMinvAsum_eigs < 0.0] = 1.0e-12
-        # ATA2_eigs = numpy.sort(numpy.linalg.eigvalsh(ATA2))
+        # ATA2_eigs = np.sort(np.linalg.eigvalsh(ATA2))
         # print(ATA2_eigs[:20])
         plt.semilogy(ATMinvAsum_eigs, ".", label="ATMinvAsum")
         # plt.semilogy(ATA2_eigs, ".", label="ATA2")
@@ -298,15 +295,15 @@ def solve(mesh, Eps, degree):
         plt.grid()
         plt.show()
         # # Preconditioned eigenvalues
-        # # IATA_eigs = numpy.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
+        # # IATA_eigs = np.sort(scipy.linalg.eigvalsh(ATMinvAsum, ATA2))
         # # plt.semilogy(IATA_eigs, ".", label="precond eigenvalues")
         # # plt.legend()
         # # plt.show()
         exit(1)
 
     # # Test with A only
-    # numpy.random.seed(123)
-    # b = numpy.random.rand(sum(a.shape[0] for a in A))
+    # np.random.seed(123)
+    # b = np.random.rand(sum(a.shape[0] for a in A))
     # MTM = M.T.dot(M)
     # MTb = M.T.dot(b)
     # sol = _gmres(
@@ -327,12 +324,12 @@ def solve(mesh, Eps, degree):
         # M^{-1} can be computed in O(n) with CG + diagonal preconditioning
         # or algebraic multigrid.
         # return sum([a.T.dot(a.dot(x)) for a in A])
-        return numpy.sum([a.T.dot(_spsolve(M, a.dot(x))) for a in A], axis=0)
+        return np.sum([a.T.dot(_spsolve(M, a.dot(x))) for a in A], axis=0)
 
     op = sparse.linalg.LinearOperator((n, n), matvec=matvec)
 
     # pick a random solution and a consistent rhs
-    x = numpy.random.rand(n)
+    x = np.random.rand(n)
     b = op.dot(x)
 
     linear_system = krypy.linsys.LinearSystem(op, b)
@@ -344,19 +341,19 @@ def solve(mesh, Eps, degree):
     print("  res: {}".format(out.resnorms[-1]))
     print(
         "  unprec res: {}".format(
-            numpy.linalg.norm(b - op.dot(out.xk)) / numpy.linalg.norm(b)
+            np.linalg.norm(b - op.dot(out.xk)) / np.linalg.norm(b)
         )
     )
     # The error isn't useful here; only with the nullspace removed
-    # print('  error: {}'.format(numpy.linalg.norm(out.xk - x)))
+    # print('  error: {}'.format(np.linalg.norm(out.xk - x)))
     print("  its: {}".format(len(out.resnorms)))
     print("  duration: {}s".format(time.time() - t))
 
     # preconditioned solver
     ml = pyamg.smoothed_aggregation_solver(AA2)
     # res = []
-    # b = numpy.random.rand(AA2.shape[0])
-    # x0 = numpy.zeros(AA2.shape[1])
+    # b = np.random.rand(AA2.shape[0])
+    # x0 = np.zeros(AA2.shape[1])
     # x = ml.solve(b, x0, residuals=res, tol=1.0e-12)
     # print(res)
     # plt.semilogy(res)
@@ -364,13 +361,13 @@ def solve(mesh, Eps, degree):
 
     mlT = pyamg.smoothed_aggregation_solver(AA2.T.tocsr())
     # res = []
-    # b = numpy.random.rand(AA2.shape[0])
-    # x0 = numpy.zeros(AA2.shape[1])
+    # b = np.random.rand(AA2.shape[0])
+    # x0 = np.zeros(AA2.shape[1])
     # x = mlT.solve(b, x0, residuals=res, tol=1.0e-12)
 
     # print(res)
     def prec_matvec(b):
-        x0 = numpy.zeros(n)
+        x0 = np.zeros(n)
         b1 = mlT.solve(b, x0, tol=1.0e-12)
         b2 = M.dot(b1)
         x = ml.solve(b2, x0, tol=1.0e-12)
@@ -398,7 +395,7 @@ def solve(mesh, Eps, degree):
     print("  res: {}".format(out_prec.resnorms[-1]))
     print(
         "  unprec res: {}".format(
-            numpy.linalg.norm(b - op.dot(out_prec.xk)) / numpy.linalg.norm(b)
+            np.linalg.norm(b - op.dot(out_prec.xk)) / np.linalg.norm(b)
         )
     )
     print("  its: {}".format(len(out_prec.resnorms)))
@@ -421,7 +418,7 @@ def _create_dolfin_mesh(points, cells):
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
         editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(numpy.uintp)):
+    for k, cell in enumerate(cells.astype(np.uintp)):
         editor.add_cell(k, cell)
     editor.close()
     return mesh
@@ -430,7 +427,7 @@ def _create_dolfin_mesh(points, cells):
 if __name__ == "__main__":
     # # 1d mesh
     # mesh = IntervalMesh(300, -1.0, +1.0)
-    # Eps = numpy.array([[1.0]])
+    # Eps = np.array([[1.0]])
 
     # 2d mesh
 
@@ -532,5 +529,5 @@ if __name__ == "__main__":
     # cells = cells['triangle']
 
     mesh = _create_dolfin_mesh(points, cells)
-    Eps = numpy.array([[1.0, 0.0], [0.0, 1.0]])
+    Eps = np.array([[1.0, 0.0], [0.0, 1.0]])
     solve(mesh, Eps, degree=1)

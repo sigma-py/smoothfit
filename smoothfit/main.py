@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import pykry
 import scipy.optimize
 from dolfin import (
@@ -45,15 +45,15 @@ def _build_eval_matrix(V, points):
         cell = Cell(mesh, cell_id)
         coordinate_dofs = cell.get_vertex_coordinates()
 
-        rows.append(numpy.full(sdim, i))
+        rows.append(np.full(sdim, i))
         cols.append(dofmap.cell_dofs(cell_id))
 
         v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
         data.append(v)
 
-    rows = numpy.concatenate(rows)
-    cols = numpy.concatenate(cols)
-    data = numpy.concatenate(data)
+    rows = np.concatenate(rows)
+    cols = np.concatenate(cols)
+    data = np.concatenate(data)
 
     m = len(points)
     n = V.dim()
@@ -64,7 +64,7 @@ def _build_eval_matrix(V, points):
 def fit1d(x0, y0, a, b, n, lmbda, solver="dense-direct", degree=1):
     mesh = IntervalMesh(n, a, b)
     V = FunctionSpace(mesh, "CG", degree)
-    return fit(x0[:, numpy.newaxis], y0, V, lmbda, solver=solver)
+    return fit(x0[:, np.newaxis], y0, V, lmbda, solver=solver)
 
 
 def fit2d(x0, y0, points, cells, lmbda, degree=1, solver="sparse"):
@@ -77,7 +77,7 @@ def fit2d(x0, y0, points, cells, lmbda, degree=1, solver="sparse"):
     editor.init_cells(len(cells))
     for k, point in enumerate(points):
         editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(numpy.uintp)):
+    for k, cell in enumerate(cells.astype(np.uintp)):
         editor.add_cell(k, cell)
     editor.close()
 
@@ -136,9 +136,9 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
         a = A.toarray()
         m = M.toarray()
         e = E.toarray()
-        AT_Minv_A = numpy.dot(a.T, numpy.linalg.solve(m, a)) + numpy.dot(e.T, e)
-        ET_b = numpy.dot(e.T, y0)
-        x = numpy.linalg.solve(AT_Minv_A, ET_b)
+        AT_Minv_A = np.dot(a.T, np.linalg.solve(m, a)) + np.dot(e.T, e)
+        ET_b = np.dot(e.T, y0)
+        x = np.linalg.solve(AT_Minv_A, ET_b)
 
     elif solver == "sparse-cg":
 
@@ -161,10 +161,10 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
         def f(x):
             Ax = A.dot(x)
             Exy = E.dot(x) - y0
-            return numpy.dot(Ax, spsolve(M, Ax)) + numpy.dot(Exy, Exy)
+            return np.dot(Ax, spsolve(M, Ax)) + np.dot(Exy, Exy)
 
         # Set x0 to be the average of y0
-        x0 = numpy.full(A.shape[0], numpy.sum(y0) / y0.shape[0])
+        x0 = np.full(A.shape[0], np.sum(y0) / y0.shape[0])
         out = scipy.optimize.minimize(f, x0, method=solver)
         x = out.x
 
