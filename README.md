@@ -2,13 +2,17 @@
   <a href="https://github.com/nschloe/smoothfit"><img alt="smoothfit" src="https://nschloe.github.io/smoothfit/logo.svg" width="60%"></a>
 </p>
 
-[![CircleCI](https://img.shields.io/circleci/project/github/nschloe/smoothfit/master.svg?style=flat-square)](https://circleci.com/gh/nschloe/smoothfit)
-[![codecov](https://img.shields.io/codecov/c/github/nschloe/smoothfit.svg?style=flat-square)](https://codecov.io/gh/nschloe/smoothfit)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
-[![smooth](https://img.shields.io/badge/smooth-yes-8209ba.svg?style=flat-square)](https://github.com/nschloe/smoothfit)
 [![PyPi Version](https://img.shields.io/pypi/v/smoothfit.svg?style=flat-square)](https://pypi.org/project/smoothfit)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/smoothfit.svg?style=flat-square)](https://pypi.org/pypi/smoothfit/)
 [![GitHub stars](https://img.shields.io/github/stars/nschloe/smoothfit.svg?style=flat-square&logo=github&label=Stars&logoColor=white)](https://github.com/nschloe/smoothfit)
 [![PyPi downloads](https://img.shields.io/pypi/dm/smoothfit.svg?style=flat-square)](https://pypistats.org/packages/smoothfit)
+
+[![Discord](https://img.shields.io/static/v1?logo=discord&label=chat&message=on%20discord&color=7289da&style=flat-square)](https://discord.gg/hnTJ5MRX2Y)
+
+[![gh-actions](https://img.shields.io/github/workflow/status/nschloe/smoothfit/ci?style=flat-square)](https://github.com/nschloe/smoothfit/actions?query=workflow%3Aci)
+[![codecov](https://img.shields.io/codecov/c/github/nschloe/smoothfit.svg?style=flat-square)](https://codecov.io/gh/nschloe/smoothfit)
+[![LGTM](https://img.shields.io/lgtm/grade/python/github/nschloe/smoothfit.svg?style=flat-square)](https://lgtm.com/projects/g/nschloe/smoothfit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
 
 Given experimental data, it is often desirable to produce a function whose values match
 the data to some degree. This package implements a robust approach to data fitting based
@@ -214,13 +218,6 @@ plt.grid()
 plt.show()
 ```
 
-### Testing
-
-To run the smoothfit unit tests, check out this repository and type
-```
-pytest
-```
-
 ### License
-
-smoothfit is published under the [GPLv3+ license](https://www.gnu.org/licenses/gpl-3.0.en.html).
+smoothfit is published under the [GPLv3+
+license](https://www.gnu.org/licenses/gpl-3.0.en.html).

@@ -30,12 +30,9 @@ jobs:
     # blas for numpy
     - name: Install system dependencies
       run: sudo apt-get install -y libblas-dev python3-dolfin
-    - name: Add ~/.local/bin to $PATH
-      # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-      run: echo "::add-path::/home/runner/.local/bin"
-    - name: Update pip
-      run: |
-        python3 -m pip install --upgrade pip
+   - name: Add ~/.local/bin to $PATH
+     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+     run: echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Install package
       run: |
         python3 -m pip install .
@@ -51,5 +48,4 @@ jobs:
     #   run: |
     #     python3 -m pip install tox
     #     tox
-    - name: Submit to codecov
-      run: bash <(curl -s https://codecov.io/bash)
+    - uses: codecov/codecov-action@v1

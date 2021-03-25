@@ -94,17 +94,17 @@ def _assemble_eigen(form):
 def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
     """We're trying to minimize
 
-       sum_i w_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
+       1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
 
     over all functions f from V with weights w_i, lmbda. The discretization of this is
 
-       ||W(E(f) - y)||_2^2 + ||lmbda Delta_h f_h||^2_{M^{-1}}
+       1/2 ||E(f) - y||_2^2 + ||lmbda Delta_h f_h||^2_{M^{-1}}
 
     where E is the (small and fat) evaluation operator at coordinates x_i, Delta_h is
     the discretization of Delta, and M is the mass matrix. One can either try and
     minimize this equation with a generic method or solve the linear equation
 
-      lmbda A.T M^{-1} A x + E.T E x = E.T y0
+      lmbda^2 A.T M^{-1} A x + E.T E x = E.T y0
 
     for the extremum x. Unfortunately, solving the linear equation is not
     straightforward. M is spd, A is nonsymmetric and rank-deficient but
