@@ -218,13 +218,6 @@ plt.grid()
 plt.show()
 ```
 
-### Testing
-
-To run the smoothfit unit tests, check out this repository and type
-```
-pytest
-```
-
 ### License
-
-smoothfit is published under the [GPLv3+ license](https://www.gnu.org/licenses/gpl-3.0.en.html).
+smoothfit is published under the [GPLv3+
+license](https://www.gnu.org/licenses/gpl-3.0.en.html).
