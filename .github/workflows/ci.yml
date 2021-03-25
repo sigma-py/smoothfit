@@ -30,6 +30,9 @@ jobs:
     # blas for numpy
     - name: Install system dependencies
       run: sudo apt-get install -y libblas-dev python3-dolfin
+   - name: Add ~/.local/bin to $PATH
+     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+     run: echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Install package
       run: |
         python3 -m pip install .
