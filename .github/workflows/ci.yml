@@ -37,7 +37,7 @@ jobs:
       run: |
         python3 -m pip install .
     - name: Install test dependencies
-      run: python3 -m pip install matplotlib meshzoo
+      run: python3 -m pip install matplotlib meshzoo exdown
     - name: Test with pytest
       run: |
         python3 -m pip install pytest pytest-cov
