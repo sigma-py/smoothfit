@@ -40,23 +40,23 @@ multidimensional, too.
 
 ```python
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 import smoothfit
 
 a = -1.5
 b = +1.5
 
 # plot original function
-x = numpy.linspace(a, b, 201)
+x = np.linspace(a, b, 201)
 plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
 # 21 sample points
-x0 = numpy.linspace(-1.0, 1.0, 21)
+x0 = np.linspace(-1.0, 1.0, 21)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
 u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
-x = numpy.linspace(a, b, 201)
+x = np.linspace(a, b, 201)
 vals = [u(xx) for xx in x]
 plt.plot(x, vals, "-", label="smooth fit")
 
@@ -81,27 +81,27 @@ in the output function `u`.
 
 ```python
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 import smoothfit
 
 a = -1.5
 b = +1.5
 
 # plot original function
-x = numpy.linspace(a, b, 201)
+x = np.linspace(a, b, 201)
 plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
 # 21 sample points
-numpy.random.seed(0)
+np.random.seed(0)
 n = 51
-x0 = numpy.linspace(-1.0, 1.0, n)
+x0 = np.linspace(-1.0, 1.0, n)
 y0 = 1 / (1 + 25 * x0 ** 2)
-y0 += 1.0e-1 * (2 * numpy.random.rand(n) - 1)
+y0 += 1.0e-1 * (2 * np.random.rand(n) - 1)
 plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
 u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
-x = numpy.linspace(a, b, 201)
+x = np.linspace(a, b, 201)
 vals = [u(xx) for xx in x]
 plt.plot(x, vals, "-", label="smooth fit")
 
@@ -120,11 +120,11 @@ data.
 <img src="https://nschloe.github.io/smoothfit/smoothfit-samples.svg" width="40%">
 
 ```python
-import numpy
+import numpy as np
 import smoothfit
 
-x0 = numpy.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
-y0 = numpy.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
+x0 = np.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
+y0 = np.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
 u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 ```
 Some noisy example data taken from
@@ -137,13 +137,13 @@ Some noisy example data taken from
 
 ```python
 import meshzoo
-import numpy
-import smoothfit 
+import numpy as np
+import smoothfit
 
 n = 200
-numpy.random.seed(123)
-x0 = numpy.random.rand(n, 2) - 0.5
-y0 = numpy.cos(numpy.pi * numpy.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
+np.random.seed(123)
+x0 = np.random.rand(n, 2) - 0.5
+y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
 # create a triangle mesh for the square
 points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
@@ -152,6 +152,7 @@ u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
 
 # Write the function to a file
 from dolfin import XDMFFile
+
 xdmf = XDMFFile("temp.xdmf")
 xdmf.write(u)
 ```
@@ -191,26 +192,26 @@ This approach is fast, but only works for evenly spaced samples.
 
 ```python
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 
 
-numpy.random.seed(0)
+np.random.seed(0)
 
 # original function
-x0 = numpy.linspace(-1.0, 1.0, 1000)
+x0 = np.linspace(-1.0, 1.0, 1000)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, color="k", alpha=0.2)
 
 # create sample points
 n = 51
-x1 = numpy.linspace(-1.0, 1.0, n)  # only works if samples are evenly spaced
-y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * numpy.random.rand(x1.shape[0]) - 1)
+x1 = np.linspace(-1.0, 1.0, n)  # only works if samples are evenly spaced
+y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * np.random.rand(x1.shape[0]) - 1)
 plt.plot(x1, y1, "xk")
 
 # Cut off the high frequencies in the transformed space and transform back
-X = numpy.fft.rfft(y1)
+X = np.fft.rfft(y1)
 X[5:] = 0.0
-y2 = numpy.fft.irfft(X, n)
+y2 = np.fft.irfft(X, n)
 #
 plt.plot(x1, y2, "-", label="5 lowest frequencies")
 
