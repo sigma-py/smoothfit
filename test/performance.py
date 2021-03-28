@@ -1,12 +1,14 @@
+import krypy
 import meshzoo
 import numpy as np
 import perfplot
+import pyamg
 import pykry
-import krypy
 import scipy.optimize
 from dolfin import (
     BoundingBoxTree,
     Cell,
+    DirichletBC,
     EigenMatrix,
     FacetNormal,
     Function,
@@ -95,8 +97,6 @@ def setup(n):
         editor.add_cell(k, cell)
     editor.close()
 
-    lmbda = 1.0
-
     degree = 1
     V = FunctionSpace(mesh, "CG", degree)
 
@@ -106,18 +106,102 @@ def setup(n):
     n = FacetNormal(mesh)
 
     A = _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
-    A *= lmbda
+    # lmbda = 1.0
+    # A *= lmbda
 
     E = _build_eval_matrix(V, x0)
 
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    return A, E, M, y0
+    # Neumann preconditioner
+    An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
+
+    # Dirichlet preconditioner
+    Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
+    bc = DirichletBC(V, 0.0, "on_boundary")
+    bc.apply(Ad)
+    Ad = Ad.sparray()
+
+    ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    mln = pyamg.smoothed_aggregation_solver(An, coarse_solver="jacobi", max_coarse=100)
+    mld = pyamg.smoothed_aggregation_solver(Ad, coarse_solver="jacobi", max_coarse=100)
+    P = [
+        scipy.sparse.linalg.LinearOperator(
+            A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
+        ),
+        scipy.sparse.linalg.LinearOperator(
+            A.shape, matvec=lambda x: mln.solve(x, tol=0.0, maxiter=1)
+        ),
+        scipy.sparse.linalg.LinearOperator(
+            A.shape, matvec=lambda x: mld.solve(x, tol=0.0, maxiter=1)
+        ),
+    ]
+    # P.append(scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
+    # ))
+    # P.append(scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=3)
+    # ))
+    # P.append(scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=4)
+    # ))
+    # P.append(scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=5)
+    # ))
+    # P.append(scipy.sparse.linalg.LinearOperator(
+    #     An.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=10)
+    # ))
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi")
+    # P1 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi")
+    # P2 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(
+    #     A, coarse_solver="gauss_seidel", max_coarse=100
+    # )
+    # P2 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
+    # )
+
+    # accel="cg" is a really bad idea
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    # P3 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape,
+    #     matvec=lambda x: ml.solve(x, tol=1.0e-10, accel="cg")
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    # P3 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=1000)
+    # P4 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    # P5 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=10)
+    # )
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    # P6 = scipy.sparse.linalg.LinearOperator(
+    #     A.shape, matvec=lambda x: ml.solve(x, tol=1.0e-10)
+    # )
+
+    return A, E, M, P, y0
 
 
 def dense_direct(data):
-    A, E, M, y0 = data
+    A, E, M, _, y0 = data
     # Minv is dense, yikes!
     a = A.toarray()
     m = M.toarray()
@@ -128,8 +212,17 @@ def dense_direct(data):
     return x
 
 
+def dense_ls(data):
+    A, E, _, _, y0 = data
+    a = A.toarray()
+    e = E.toarray()
+    AE = np.vstack([a, e])
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    return np.linalg.lstsq(AE, b)
+
+
 def minimize(data):
-    A, E, M, y0 = data
+    A, E, M, _, y0 = data
 
     def f(x):
         Ax = A.dot(x)
@@ -144,7 +237,7 @@ def minimize(data):
 
 
 def sparse_cg(data):
-    A, E, M, y0 = data
+    A, E, M, _, y0 = data
 
     def matvec(x):
         Ax = A.dot(x)
@@ -162,7 +255,7 @@ def sparse_cg(data):
 
 
 def scipy_cg(data):
-    A, E, M, y0 = data
+    A, E, M, _, y0 = data
 
     def matvec(x):
         Ax = A.dot(x)
@@ -179,7 +272,7 @@ def scipy_cg(data):
 
 
 def scipy_cg_without_m(data):
-    A, E, _, y0 = data
+    A, E, _, _, y0 = data
 
     def matvec(x):
         return A.T.dot(A.dot(x)) + E.T.dot(E.dot(x))
@@ -195,34 +288,142 @@ def scipy_cg_without_m(data):
 
 
 def scipy_lsqr_without_m(data):
-    A, E, _, y0 = data
+    A, E, _, _, y0 = data
 
     lop = scipy.sparse.linalg.LinearOperator(
         (A.shape[0] + E.shape[0], A.shape[1]),
         matvec=lambda x: np.concatenate([A @ x, E @ x]),
-        rmatvec=lambda y: A.T @ y[:A.shape[0]] + E.T @ y[A.shape[0]:]
+        rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
     )
 
     b = np.concatenate([np.zeros(A.shape[0]), y0])
-    out = scipy.sparse.linalg.lsqr(lop, b)
+    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
 
     x = out[0]
     # num_iter = out[2]
     return x
 
 
-pb = perfplot.bench(
+def scipy_lsmr_without_m(data):
+    A, E, _, _, y0 = data
+
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([A @ x, E @ x]),
+        rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+    )
+
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    out = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
+
+    x = out[0]
+    # num_iter = out[2]
+    # conda = out[6]
+    return x
+
+
+def scipy_lsqr_without_m(data):
+    A, E, _, _, y0 = data
+
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([A @ x, E @ x]),
+        rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+    )
+
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+
+    x = out[0]
+    # num_iter = out[2]
+    return x
+
+
+def _lprec(A, E, P, y0):
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([P @ (A @ x), E @ x]),
+        # P is self-adjoint
+        rmatvec=lambda y: A.T @ (P @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+    )
+
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+
+    x = out[0]
+    return x
+
+
+def _rprec(A, E, P, y0):
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([A @ (P @ x), E @ x]),
+        # P is self-adjoint
+        rmatvec=lambda y: P @ (A.T @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+    )
+
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+
+    x = out[0]
+    x = P @ x
+    return x
+
+
+def lsqr_prec0(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[0], y0)
+
+
+def lsqr_prec1(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[1], y0)
+
+
+def lsqr_prec2(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[2], y0)
+
+
+def lsqr_prec3(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[3], y0)
+
+
+def lsqr_prec4(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[4], y0)
+
+
+def lsqr_prec5(data):
+    A, E, _, P, y0 = data
+    return _lprec(A, E, P[5], y0)
+
+
+pb = perfplot.live(
     setup=setup,
     kernels=[
         dense_direct,
-        # minimize,
-        # sparse_cg,
-        # scipy_cg,
-        scipy_cg_without_m,
-        scipy_lsqr_without_m,
+        dense_ls,
+        # # minimize,
+        # # sparse_cg,
+        # # scipy_cg,
+        # scipy_cg_without_m,
+        # scipy_lsqr_without_m,
+        # scipy_lsmr_without_m,
+        lsqr_prec0,
+        lsqr_prec1,
+        lsqr_prec2,
+        # lsqr_prec3,
+        # lsqr_prec4,
+        # lsqr_prec5,
     ],
-    n_range=range(5, 61, 5),
+    n_range=range(5, 201, 5),
     equality_check=None,
+    max_time=4.0,
     xlabel="n",
 )
-pb.show()
+
+# insights:
+# * lprec vs rprec doesn't make a big difference
+# * 3-5 ML steps is best

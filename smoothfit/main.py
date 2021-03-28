@@ -60,7 +60,20 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, lmbda, solver="dense-direct", degree=1):
+def fit1d(
+    x0,
+    y0,
+    a: float,
+    b: float,
+    n: int,
+    lmbda: float,
+    solver: str = "dense-direct",
+    degree: int = 1,
+):
+    x0 = np.asarray(x0)
+    if np.any(x0 < a) or np.any(x0 > b):
+        raise ValueError("Interval (a, b) must contain all x.")
+
     mesh = IntervalMesh(n, a, b)
     V = FunctionSpace(mesh, "CG", degree)
     return fit(x0[:, np.newaxis], y0, V, lmbda, solver=solver)
