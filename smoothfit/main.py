@@ -25,9 +25,8 @@ from scipy.sparse.linalg import spsolve
 
 
 def _build_eval_matrix(V, points):
-    """Build the sparse m-by-n matrix that maps a coefficient set for a
-    function in V to the values of that function at m given points.
-    """
+    """Build the sparse m-by-n matrix that maps a coefficient set for a function in V to
+    the values of that function at m given points."""
     # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
     mesh = V.mesh()
 
@@ -61,7 +60,20 @@ def _build_eval_matrix(V, points):
     return matrix
 
 
-def fit1d(x0, y0, a, b, n, lmbda, solver="dense-direct", degree=1):
+def fit1d(
+    x0,
+    y0,
+    a: float,
+    b: float,
+    n: int,
+    lmbda: float,
+    solver: str = "dense-direct",
+    degree: int = 1,
+):
+    x0 = np.asarray(x0)
+    if np.any(x0 < a) or np.any(x0 > b):
+        raise ValueError("Interval (a, b) must contain all x.")
+
     mesh = IntervalMesh(n, a, b)
     V = FunctionSpace(mesh, "CG", degree)
     return fit(x0[:, np.newaxis], y0, V, lmbda, solver=solver)
@@ -91,7 +103,7 @@ def _assemble_eigen(form):
     return L
 
 
-def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
+def fit(x0, y0, V, lmbda, solver):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
@@ -127,10 +139,6 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    # Scipy implementations of both LSQR and LSMR can only be used with the standard l_2
-    # inner product. This is not sufficient here: We need the M inner product to make
-    # sure that the discrete residual is an approximation to the inner product of the
-    # continuous problem.
     if solver == "dense-direct":
         # Minv is dense, yikes!
         a = A.toarray()
@@ -156,6 +164,26 @@ def fit(x0, y0, V, lmbda, solver, prec_dirichlet_indices=None):
         # plt.semilogy(out.resnorms)
         # plt.grid()
         # plt.show()
+    elif solver in ["lsqr", "lsmr"]:
+        # Scipy implementations of both LSQR and LSMR can only be used with the standard
+        # l_2 inner product. Let's do this here, but keep in mind that the factor M^{-1}
+        # is not considered here, and lambda needs to be adapted for each different n.
+        # The discrete residual is not an approximation to the inner product of the
+        # continuous problem here.
+        # Keep an eye on <https://scicomp.stackexchange.com/q/37115/3980>, perhaps
+        # there'll be a good idea for a preconditioner one day.
+        lop = scipy.sparse.linalg.LinearOperator(
+            (A.shape[0] + E.shape[0], A.shape[1]),
+            matvec=lambda x: np.concatenate([A @ x, E @ x]),
+            rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+        )
+        b = np.concatenate([np.zeros(A.shape[0]), y0])
+        if solver == "lsqr":
+            x = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+        else:
+            assert solver == "lsmr"
+            x = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
+        x = x[0]
     else:
 
         def f(x):
