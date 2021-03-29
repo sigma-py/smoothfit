@@ -19,6 +19,7 @@ from dolfin import (
     Point,
     TestFunction,
     TrialFunction,
+    UnitSquareMesh,
     assemble,
     dot,
     ds,
@@ -123,18 +124,30 @@ def setup(n):
     bc.apply(Ad)
     Ad = Ad.sparray()
 
-    ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
-    mln = pyamg.smoothed_aggregation_solver(An, coarse_solver="jacobi", max_coarse=100)
-    mld = pyamg.smoothed_aggregation_solver(Ad, coarse_solver="jacobi", max_coarse=100)
+    # Aq = _assemble_eigen(
+    #     dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds - dot(n, grad(v)) * u * ds
+    # ).sparray()
+
+    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
+    # mln = pyamg.smoothed_aggregation_solver(An, coarse_solver="jacobi", max_coarse=100)
+    # mld = pyamg.smoothed_aggregation_solver(Ad, coarse_solver="jacobi", max_coarse=100)
+    # mlq = pyamg.smoothed_aggregation_solver(Aq, coarse_solver="jacobi", max_coarse=100)
+
+    ml = pyamg.smoothed_aggregation_solver(
+        A, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
+    )
     P = [
+        # scipy.sparse.linalg.LinearOperator(
+        #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
+        # ),
+        # scipy.sparse.linalg.LinearOperator(
+        #     A.shape, matvec=lambda x: mln.solve(x, tol=0.0, maxiter=1)
+        # ),
+        # scipy.sparse.linalg.LinearOperator(
+        #     A.shape, matvec=lambda x: mld.solve(x, tol=0.0, maxiter=1)
+        # ),
         scipy.sparse.linalg.LinearOperator(
             A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
-        ),
-        scipy.sparse.linalg.LinearOperator(
-            A.shape, matvec=lambda x: mln.solve(x, tol=0.0, maxiter=1)
-        ),
-        scipy.sparse.linalg.LinearOperator(
-            A.shape, matvec=lambda x: mld.solve(x, tol=0.0, maxiter=1)
         ),
     ]
     # P.append(scipy.sparse.linalg.LinearOperator(
@@ -403,8 +416,8 @@ def lsqr_prec5(data):
 pb = perfplot.live(
     setup=setup,
     kernels=[
-        dense_direct,
-        dense_ls,
+        # dense_direct,
+        # dense_ls,
         # # minimize,
         # # sparse_cg,
         # # scipy_cg,
@@ -412,8 +425,9 @@ pb = perfplot.live(
         # scipy_lsqr_without_m,
         # scipy_lsmr_without_m,
         lsqr_prec0,
-        lsqr_prec1,
-        lsqr_prec2,
+        # lsqr_prec1,
+        # lsqr_prec2,
+        # lsqr_prec3,
         # lsqr_prec3,
         # lsqr_prec4,
         # lsqr_prec5,
@@ -423,7 +437,3 @@ pb = perfplot.live(
     max_time=4.0,
     xlabel="n",
 )
-
-# insights:
-# * lprec vs rprec doesn't make a big difference
-# * 3-5 ML steps is best

@@ -171,6 +171,8 @@ def test_samples():
     [
         "dense-direct",
         # "sparse-cg",  # fails on circleci
+        "lsqr",
+        "lsmr",
     ],
 )
 def test_2d(solver, write_file=False):
