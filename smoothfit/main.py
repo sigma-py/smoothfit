@@ -21,16 +21,10 @@ def fit1d(
 
     cells = np.array([np.arange(0, n), np.arange(1, n + 1)]).T
     points = np.linspace(a, b, n + 1, endpoint=True).reshape(-1, 1)
-    degree = 1
-
-    return fit(x0[:, np.newaxis], y0, points, cells, degree, lmbda, solver=solver)
+    return fit(x0[:, np.newaxis], y0, points, cells, lmbda, degree, solver=solver)
 
 
-def fit2d(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "sparse"):
-    return fit(x0, y0, points, cells, degree, lmbda, solver=solver)
-
-
-def fit(x0, y0, points, cells, degree: int, lmbda: float, solver: str):
+def fit(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}

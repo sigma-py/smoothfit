@@ -148,7 +148,7 @@ y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 # create a triangle mesh for the square
 points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
 
-u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
+u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
 
 # Write the function to a file
 from dolfin import XDMFFile
