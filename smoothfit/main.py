@@ -24,7 +24,7 @@ def fit1d(
     return fit(x0[:, np.newaxis], y0, points, cells, lmbda, degree, solver=solver)
 
 
-def fit(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"):
+def fit(*args, variant="skfem", **kwargs):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
@@ -44,6 +44,60 @@ def fit(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsq
     positive-semidefinite. So far, we simply use sparse CG, but a good idea for a
     preconditioner is highly welcome.
     """
+    if variant == "dolfin":
+        return _fit_dolfin(*args, **kwargs)
+
+    assert variant == "skfem"
+    return _fit_skfem(*args, **kwargs)
+
+
+def _fit_skfem(
+    x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"
+):
+    import skfem
+    from skfem.models.poisson import laplace
+    from skfem.helpers import dot
+
+    assert degree == 1
+
+    if cells.shape[1] == 2:
+        mesh = skfem.MeshLine(points.T, cells.T)
+        element = skfem.ElementLineP1()
+    else:
+        assert cells.shape[1] == 3
+        mesh = skfem.MeshTri(points.T, cells.T)
+        element = skfem.ElementTriP1()
+
+    @skfem.BilinearForm
+    def mass(u, v, _):
+        return u * v
+
+    @skfem.BilinearForm
+    def flux(u, v, w):
+        return dot(w.n, u.grad) * v
+
+    basis = skfem.InteriorBasis(mesh, element)
+    facet_basis = skfem.FacetBasis(basis.mesh, basis.elem)
+
+    lap = skfem.asm(laplace, basis)
+    boundary_terms = skfem.asm(flux, facet_basis)
+
+    A = lap - boundary_terms
+    A *= lmbda
+
+    # get the evaluation matrix
+    E = basis.probes(x0.T)
+
+    # mass matrix
+    M = skfem.asm(mass, basis)
+
+    x = _solve(A, M, E, y0, solver)
+    return basis, x
+
+
+def _fit_dolfin(
+    x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"
+):
     from dolfin import (
         BoundingBoxTree,
         Cell,
