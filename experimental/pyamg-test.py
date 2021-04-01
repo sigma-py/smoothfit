@@ -1,13 +1,12 @@
-import numpy as np
-import scipy.linalg
-import meshzoo
-import skfem as fem
-from skfem.models.poisson import laplace
-import pyamg
-from skfem.helpers import dot
-import npx
 import matplotlib.pyplot as plt
-
+import meshzoo
+import npx
+import numpy as np
+import pyamg
+import scipy.linalg
+import skfem as fem
+from skfem.helpers import dot
+from skfem.models.poisson import laplace
 
 points, cells = meshzoo.rectangle_tri((0.0, 0.0), (1.0, 1.0), 35)
 # points, cells = meshzoo.disk(6, 25)
@@ -39,7 +38,10 @@ for n in lns:
 
 
 ml = pyamg.smoothed_aggregation_solver(
-    A, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100,
+    A,
+    coarse_solver="jacobi",
+    symmetry="nonsymmetric",
+    max_coarse=100,
     # B=scipy.linalg.null_space(A.toarray())
 )
 M = ml.aspreconditioner(cycle="V")

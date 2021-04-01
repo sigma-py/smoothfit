@@ -1,10 +1,13 @@
+import meshzoo
 import numpy as np
 import scipy.linalg
-import meshzoo
 from dolfin import (
     EigenMatrix,
+    Expression,
     FacetNormal,
     FunctionSpace,
+    Mesh,
+    MeshEditor,
     TestFunction,
     TrialFunction,
     UnitIntervalMesh,
@@ -14,10 +17,7 @@ from dolfin import (
     ds,
     dx,
     grad,
-    Mesh,
-    MeshEditor,
-    Expression,
-    project
+    project,
 )
 
 np.random.seed(0)
@@ -68,6 +68,7 @@ def create_A_scikit(points, cells):
     @fem.BilinearForm
     def flux(u, v, w):
         from skfem.helpers import dot
+
         return dot(w.n, u.grad) * v
 
     mesh = fem.MeshTri(points.T, cells.T)
@@ -81,7 +82,6 @@ def create_A_scikit(points, cells):
     boundary_terms = fem.asm(flux, facet_basis)
 
     return lap - boundary_terms
-
 
 
 k = 20

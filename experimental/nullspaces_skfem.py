@@ -1,9 +1,8 @@
+import meshzoo
 import numpy as np
 import scipy.linalg
-import meshzoo
 import skfem as fem
 from skfem.models.poisson import laplace
-
 
 # points, cells = meshzoo.rectangle_tri((0.0, 0.0), (1.0, 1.0), 20)
 points, cells = meshzoo.disk(6, 10)
@@ -12,7 +11,9 @@ points, cells = meshzoo.disk(6, 10)
 @fem.BilinearForm
 def flux(u, v, w):
     from skfem.helpers import dot
+
     return dot(w.n, u.grad) * v
+
 
 mesh = fem.MeshTri(points.T, cells.T)
 basis = fem.InteriorBasis(mesh, fem.ElementTriP1())

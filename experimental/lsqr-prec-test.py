@@ -1,7 +1,7 @@
 import krypy
+import matplotlib.pyplot as plt
 import meshzoo
 import numpy as np
-import matplotlib.pyplot as plt
 import perfplot
 import pyamg
 import pykry
