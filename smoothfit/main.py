@@ -1,63 +1,8 @@
 import numpy as np
 import pykry
 import scipy.optimize
-from dolfin import (
-    BoundingBoxTree,
-    Cell,
-    EigenMatrix,
-    FacetNormal,
-    Function,
-    FunctionSpace,
-    IntervalMesh,
-    Mesh,
-    MeshEditor,
-    Point,
-    TestFunction,
-    TrialFunction,
-    assemble,
-    dot,
-    ds,
-    dx,
-    grad,
-)
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
-
-
-def _build_eval_matrix(V, points):
-    """Build the sparse m-by-n matrix that maps a coefficient set for a function in V to
-    the values of that function at m given points."""
-    # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
-    mesh = V.mesh()
-
-    bbt = BoundingBoxTree()
-    bbt.build(mesh)
-    dofmap = V.dofmap()
-    el = V.element()
-    sdim = el.space_dimension()
-
-    rows = []
-    cols = []
-    data = []
-    for i, x in enumerate(points):
-        cell_id = bbt.compute_first_entity_collision(Point(*x))
-        cell = Cell(mesh, cell_id)
-        coordinate_dofs = cell.get_vertex_coordinates()
-
-        rows.append(np.full(sdim, i))
-        cols.append(dofmap.cell_dofs(cell_id))
-
-        v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
-        data.append(v)
-
-    rows = np.concatenate(rows)
-    cols = np.concatenate(cols)
-    data = np.concatenate(data)
-
-    m = len(points)
-    n = V.dim()
-    matrix = sparse.csr_matrix((data, (rows, cols)), shape=(m, n))
-    return matrix
 
 
 def fit1d(
@@ -67,43 +12,25 @@ def fit1d(
     b: float,
     n: int,
     lmbda: float,
-    solver: str = "dense-direct",
     degree: int = 1,
+    solver: str = "dense-direct",
 ):
     x0 = np.asarray(x0)
     if np.any(x0 < a) or np.any(x0 > b):
         raise ValueError("Interval (a, b) must contain all x.")
 
-    mesh = IntervalMesh(n, a, b)
-    V = FunctionSpace(mesh, "CG", degree)
-    return fit(x0[:, np.newaxis], y0, V, lmbda, solver=solver)
+    cells = np.array([np.arange(0, n), np.arange(1, n + 1)]).T
+    points = np.linspace(a, b, n + 1, endpoint=True).reshape(-1, 1)
+    degree = 1
+
+    return fit(x0[:, np.newaxis], y0, points, cells, degree, lmbda, solver=solver)
 
 
-def fit2d(x0, y0, points, cells, lmbda, degree=1, solver="sparse"):
-    # Convert points, cells to dolfin mesh
-    editor = MeshEditor()
-    mesh = Mesh()
-    # topological and geometrical dimension 2
-    editor.open(mesh, "triangle", 2, 2, 1)
-    editor.init_vertices(len(points))
-    editor.init_cells(len(cells))
-    for k, point in enumerate(points):
-        editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(np.uintp)):
-        editor.add_cell(k, cell)
-    editor.close()
-
-    V = FunctionSpace(mesh, "CG", degree)
-    return fit(x0, y0, V, lmbda, solver=solver)
+def fit2d(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "sparse"):
+    return fit(x0, y0, points, cells, degree, lmbda, solver=solver)
 
 
-def _assemble_eigen(form):
-    L = EigenMatrix()
-    assemble(form, tensor=L)
-    return L
-
-
-def fit(x0, y0, V, lmbda, solver):
+def fit(x0, y0, points, cells, degree: int, lmbda: float, solver: str):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
@@ -123,6 +50,88 @@ def fit(x0, y0, V, lmbda, solver):
     positive-semidefinite. So far, we simply use sparse CG, but a good idea for a
     preconditioner is highly welcome.
     """
+    from dolfin import (
+        BoundingBoxTree,
+        Cell,
+        EigenMatrix,
+        FacetNormal,
+        Function,
+        FunctionSpace,
+        IntervalMesh,
+        Mesh,
+        MeshEditor,
+        Point,
+        TestFunction,
+        TrialFunction,
+        assemble,
+        dot,
+        ds,
+        dx,
+        grad,
+    )
+
+    def _assemble_eigen(form):
+        L = EigenMatrix()
+        assemble(form, tensor=L)
+        return L
+
+    def _build_eval_matrix(V, points):
+        """Build the sparse m-by-n matrix that maps a coefficient set for a function in
+        V to the values of that function at m given points."""
+        # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
+        mesh = V.mesh()
+
+        bbt = BoundingBoxTree()
+        bbt.build(mesh)
+        dofmap = V.dofmap()
+        el = V.element()
+        sdim = el.space_dimension()
+
+        rows = []
+        cols = []
+        data = []
+        for i, x in enumerate(points):
+            cell_id = bbt.compute_first_entity_collision(Point(*x))
+            cell = Cell(mesh, cell_id)
+            coordinate_dofs = cell.get_vertex_coordinates()
+
+            rows.append(np.full(sdim, i))
+            cols.append(dofmap.cell_dofs(cell_id))
+
+            v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
+            data.append(v)
+
+        rows = np.concatenate(rows)
+        cols = np.concatenate(cols)
+        data = np.concatenate(data)
+
+        m = len(points)
+        n = V.dim()
+        matrix = sparse.csr_matrix((data, (rows, cols)), shape=(m, n))
+        return matrix
+
+    editor = MeshEditor()
+    mesh = Mesh()
+
+    # Convert points, cells to dolfin mesh
+    if cells.shape[1] == 2:
+        editor.open(mesh, "interval", 1, 1, 1)
+    else:
+        # can only handle triangles for now
+        assert cells.shape[1] == 3
+        # topological and geometrical dimension 2
+        editor.open(mesh, "triangle", 2, 2, 1)
+
+    editor.init_vertices(len(points))
+    editor.init_cells(len(cells))
+    for k, point in enumerate(points):
+        editor.add_vertex(k, point)
+    for k, cell in enumerate(cells.astype(np.uintp)):
+        editor.add_cell(k, cell)
+    editor.close()
+
+    V = FunctionSpace(mesh, "CG", degree)
+
     u = TrialFunction(V)
     v = TestFunction(V)
 
@@ -139,6 +148,13 @@ def fit(x0, y0, V, lmbda, solver):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
+    x = _solve(A, M, E, y0, solver)
+    u = Function(V)
+    u.vector().set_local(x)
+    return u
+
+
+def _solve(A, M, E, y0, solver):
     if solver == "dense-direct":
         # Minv is dense, yikes!
         a = A.toarray()
@@ -196,6 +212,4 @@ def fit(x0, y0, V, lmbda, solver):
         out = scipy.optimize.minimize(f, x0, method=solver)
         x = out.x
 
-    u = Function(V)
-    u.vector().set_local(x)
-    return u
+    return x

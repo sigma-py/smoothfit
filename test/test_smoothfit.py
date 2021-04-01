@@ -25,7 +25,7 @@ def test_1d(solver, show=False):
     b = +1.5
 
     lmbda = 1.0e-2
-    u = smoothfit.fit1d(x0, y0, a, b, 64, degree=1, lmbda=lmbda, solver=solver)
+    u = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
 
     if solver == "Nelder-Mead":
         ref = 0.659_143_389_243_738_2
@@ -211,7 +211,7 @@ def test_2d(solver, write_file=False):
 
 
 if __name__ == "__main__":
-    test_1d(True)
+    test_1d("dense-direct", show=True)
     # test_runge_show()
     # test_noisy_runge()
     # test_samples()
