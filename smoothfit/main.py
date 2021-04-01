@@ -117,7 +117,6 @@ def _fit_dolfin(
         FacetNormal,
         Function,
         FunctionSpace,
-        IntervalMesh,
         Mesh,
         MeshEditor,
         Point,

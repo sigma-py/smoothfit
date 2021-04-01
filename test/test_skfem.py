@@ -117,7 +117,7 @@ def test_samples():
     basis, u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 
     # plot the function
-    x = np.linspace(0, 4, 201)
+    # x = np.linspace(0, 4, 201)
     # vals = [u(xx) for xx in x]
     # plt.plot(x, vals, "-", label="smooth fit")
     skfem.visuals.matplotlib.plot(basis, u)
