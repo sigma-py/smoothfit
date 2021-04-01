@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import pykry
 import scipy.optimize
@@ -243,11 +244,13 @@ def _solve(A, M, E, y0, solver):
         )
         b = np.concatenate([np.zeros(A.shape[0]), y0])
         if solver == "lsqr":
-            x = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+            out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
         else:
             assert solver == "lsmr"
-            x = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
-        x = x[0]
+            out = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
+        x = out[0]
+        if out[4] > 1.0e-10:
+            warnings.warn(f"{solver} residual 2-norm is {out[4]}.")
     else:
 
         def f(x):
