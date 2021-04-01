@@ -136,19 +136,27 @@ def setup(n):
     ml = pyamg.smoothed_aggregation_solver(
         A, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
     )
+    mlT = pyamg.smoothed_aggregation_solver(
+        A.T, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
+    )
+
+    P = ml.aspreconditioner()
+    PT = mlT.aspreconditioner()
+
+    # x = np.random.rand(A.shape[1])
+    # y = np.random.rand(A.shape[1])
+
     P = [
-        # scipy.sparse.linalg.LinearOperator(
-        #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
-        # ),
-        # scipy.sparse.linalg.LinearOperator(
-        #     A.shape, matvec=lambda x: mln.solve(x, tol=0.0, maxiter=1)
-        # ),
-        # scipy.sparse.linalg.LinearOperator(
-        #     A.shape, matvec=lambda x: mld.solve(x, tol=0.0, maxiter=1)
-        # ),
-        scipy.sparse.linalg.LinearOperator(
-            A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
+        (
+            scipy.sparse.linalg.LinearOperator(
+                A.shape, matvec=lambda x: ml.solve(x, tol=1.0e-8)
+            ),
+            scipy.sparse.linalg.LinearOperator(
+                A.shape, matvec=lambda x: mlT.solve(x, tol=1.0e-8)
+            ),
         ),
+        # not working well:
+        # (ml.aspreconditioner(), mlT.aspreconditioner())
     ]
     # P.append(scipy.sparse.linalg.LinearOperator(
     #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
@@ -352,12 +360,27 @@ def scipy_lsqr_without_m(data):
     return x
 
 
-def _lprec(A, E, P, y0):
+def a_identity(data):
+    A, E, _, _, y0 = data
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([x, E @ x]),
+        rmatvec=lambda y: y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+    )
+
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+
+    x = out[0]
+    return x
+
+
+def _lprec(A, E, P_PT, y0):
+    P, PT = P_PT
     lop = scipy.sparse.linalg.LinearOperator(
         (A.shape[0] + E.shape[0], A.shape[1]),
         matvec=lambda x: np.concatenate([P @ (A @ x), E @ x]),
-        # P is self-adjoint
-        rmatvec=lambda y: A.T @ (P @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+        rmatvec=lambda y: A.T @ (PT @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
     )
 
     b = np.concatenate([np.zeros(A.shape[0]), y0])
@@ -371,8 +394,7 @@ def _rprec(A, E, P, y0):
     lop = scipy.sparse.linalg.LinearOperator(
         (A.shape[0] + E.shape[0], A.shape[1]),
         matvec=lambda x: np.concatenate([A @ (P @ x), E @ x]),
-        # P is self-adjoint
-        rmatvec=lambda y: P @ (A.T @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+        rmatvec=lambda y: P.T @ (A.T @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
     )
 
     b = np.concatenate([np.zeros(A.shape[0]), y0])
@@ -424,7 +446,8 @@ pb = perfplot.live(
         # scipy_cg_without_m,
         # scipy_lsqr_without_m,
         # scipy_lsmr_without_m,
-        lsqr_prec0,
+        a_identity,
+        # lsqr_prec0,
         # lsqr_prec1,
         # lsqr_prec2,
         # lsqr_prec3,
@@ -432,7 +455,7 @@ pb = perfplot.live(
         # lsqr_prec4,
         # lsqr_prec5,
     ],
-    n_range=range(5, 201, 5),
+    n_range=range(10, 1001, 10),
     equality_check=None,
     max_time=4.0,
     xlabel="n",
