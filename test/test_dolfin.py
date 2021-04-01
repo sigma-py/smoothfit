@@ -1,9 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from dolfin import assemble, dx
 
 import smoothfit
+
+dolfin = pytest.importorskip("dolfin")
+assemble = dolfin.assemble
+dx = dolfin.dx
 
 
 @pytest.mark.parametrize("solver", ["dense-direct", "sparse-cg", "Nelder-Mead"])
@@ -25,7 +28,9 @@ def test_1d(solver, show=False):
     b = +1.5
 
     lmbda = 1.0e-2
-    u = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
+    u = smoothfit.fit1d(
+        x0, y0, a, b, 64, lmbda, degree=1, solver=solver, variant="dolfin"
+    )
 
     if solver == "Nelder-Mead":
         ref = 0.659_143_389_243_738_2
@@ -46,7 +51,6 @@ def test_1d(solver, show=False):
         plt.xlim(a, b)
         plt.legend()
         plt.show()
-    return
 
 
 def test_runge_show():
@@ -79,7 +83,6 @@ def test_runge_show():
     plt.ylim(-0.2, 1.2)
     plt.show()
     # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
-    return
 
 
 def test_noisy_runge():
@@ -97,7 +100,7 @@ def test_noisy_runge():
     # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
     lmbda = 0.2
-    u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
+    u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda, variant="dolfin")
     x = np.linspace(a, b, 201)
     vals = [u(xx) for xx in x]
     plt.plot(x, vals, "-")
@@ -108,14 +111,13 @@ def test_noisy_runge():
     plt.gca().set_aspect("equal")
     # plt.show()
     plt.savefig("runge-noise-02.svg", bbox_inches="tight", transparent=True)
-    return
 
 
 def test_samples():
     # From <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example>
     x0 = np.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
     y0 = np.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
-    u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
+    u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0, variant="dolfin")
 
     # plot the function
     x = np.linspace(0, 4, 201)
@@ -127,7 +129,6 @@ def test_samples():
     plt.grid()
     # plt.show()
     plt.savefig("smoothfit-samples.svg", bbox_inches="tight", transparent=True)
-    return
 
 
 # def test_1d_scale():
@@ -163,7 +164,6 @@ def test_samples():
 #     plt.xlim(a, b)
 #     plt.legend()
 #     plt.show()
-#     return
 
 
 @pytest.mark.parametrize(
@@ -207,7 +207,6 @@ def test_2d(solver, write_file=False):
 
         xdmf = XDMFFile("temp.xdmf")
         xdmf.write(u)
-    return
 
 
 if __name__ == "__main__":

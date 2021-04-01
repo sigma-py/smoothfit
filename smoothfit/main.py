@@ -1,4 +1,5 @@
 import warnings
+
 import numpy as np
 import pykry
 import scipy.optimize
@@ -15,6 +16,7 @@ def fit1d(
     lmbda: float,
     degree: int = 1,
     solver: str = "dense-direct",
+    variant: str = "skfem",
 ):
     x0 = np.asarray(x0)
     if np.any(x0 < a) or np.any(x0 > b):
@@ -22,7 +24,16 @@ def fit1d(
 
     cells = np.array([np.arange(0, n), np.arange(1, n + 1)]).T
     points = np.linspace(a, b, n + 1, endpoint=True).reshape(-1, 1)
-    return fit(x0[:, np.newaxis], y0, points, cells, lmbda, degree, solver=solver)
+    return fit(
+        x0[:, np.newaxis],
+        y0,
+        points,
+        cells,
+        lmbda,
+        degree,
+        solver=solver,
+        variant=variant,
+    )
 
 
 def fit(*args, variant="skfem", **kwargs):
@@ -56,8 +67,8 @@ def _fit_skfem(
     x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"
 ):
     import skfem
-    from skfem.models.poisson import laplace
     from skfem.helpers import dot
+    from skfem.models.poisson import laplace
 
     assert degree == 1
 
