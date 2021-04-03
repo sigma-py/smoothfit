@@ -41,7 +41,6 @@ multidimensional, too.
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
-from skfem.visuals.matplotlib import plot as skplot
 import smoothfit
 
 a = -1.5
@@ -57,7 +56,7 @@ y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
 basis, u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
-skplot(basis, u)
+plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.ylim(-0.1)
 plt.grid()
@@ -81,7 +80,6 @@ in the output function `u`.
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
-from skfem.visuals.matplotlib import plot as skplot
 import smoothfit
 
 a = -1.5
@@ -101,7 +99,7 @@ plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
 basis, u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
-skplot(basis, u)
+plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.grid()
 plt.show()

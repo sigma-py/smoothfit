@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import meshzoo
 import numpy as np
 import pytest
-import skfem.visuals.matplotlib
 
 import smoothfit
 
@@ -36,10 +35,7 @@ def test_1d(solver, show=False):
     assert abs(np.dot(coeffs, coeffs) - ref) < 1.0e-10 * ref
 
     if show:
-        # TODO keep an eye on <https://github.com/kinnala/scikit-fem/issues/607> for
-        # plot options
-        skfem.visuals.matplotlib.plot(basis, coeffs)
-        # , "-", label="smooth fit")
+        plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
         plt.plot(x0, y0, "xk", label="samples")
         x = np.linspace(a, b, 101)
@@ -98,7 +94,7 @@ def test_noisy_runge():
 
     lmbda = 0.2
     basis, u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
-    skfem.visuals.matplotlib.plot(basis, u)
+    plt.plot(basis.mesh.p[0], u[basis.nodal_dofs[0]], "-", label="smooth fit")
     # plt.title(f"lmbda = {lmbda:.1e}")
 
     plt.xlim(a, b)
@@ -117,11 +113,8 @@ def test_samples():
     basis, u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 
     # plot the function
-    # x = np.linspace(0, 4, 201)
-    # vals = [u(xx) for xx in x]
-    # plt.plot(x, vals, "-", label="smooth fit")
-    skfem.visuals.matplotlib.plot(basis, u)
-    # plt.plot(x0, y0, "xk")
+    plt.plot(basis.mesh.p[0], u[basis.nodal_dofs[0]], "-", label="smooth fit")
+    plt.plot(x0, y0, "xk")
     plt.xlim(0, 4)
     plt.ylim(0)
     plt.grid()
@@ -205,11 +198,11 @@ def test_2d(solver, write_file=False):
 
 
 if __name__ == "__main__":
-    # test_1d("dense-direct", show=True)
+    test_1d("dense-direct", show=True)
     # test_runge_show()
     # test_noisy_runge()
     # test_samples()
-    test_2d("dense-direct", write_file=True)
-    test_2d("lsqr", write_file=True)
-    test_2d("lsmr", write_file=True)
+    # test_2d("dense-direct", write_file=True)
+    # test_2d("lsqr", write_file=True)
+    # test_2d("lsmr", write_file=True)
     # test_1d_scale()
