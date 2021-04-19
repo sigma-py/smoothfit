@@ -6,7 +6,6 @@ from dolfin import (
     FunctionSpace,
     TestFunction,
     TrialFunction,
-    UnitIntervalMesh,
     UnitSquareMesh,
     assemble,
     dot,

@@ -1,6 +1,4 @@
 import meshzoo
-import numpy as np
-import scipy.linalg
 import skfem as fem
 from skfem.models.poisson import laplace
 

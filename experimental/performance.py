@@ -11,15 +11,12 @@ from dolfin import (
     DirichletBC,
     EigenMatrix,
     FacetNormal,
-    Function,
     FunctionSpace,
-    IntervalMesh,
     Mesh,
     MeshEditor,
     Point,
     TestFunction,
     TrialFunction,
-    UnitSquareMesh,
     assemble,
     dot,
     ds,
@@ -115,14 +112,14 @@ def setup(n):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    # Neumann preconditioner
-    An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
+    # # Neumann preconditioner
+    # An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
 
     # Dirichlet preconditioner
     Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
     bc = DirichletBC(V, 0.0, "on_boundary")
     bc.apply(Ad)
-    Ad = Ad.sparray()
+    # Ad = Ad.sparray()
 
     # Aq = _assemble_eigen(
     #     dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds - dot(n, grad(v)) * u * ds
@@ -141,7 +138,7 @@ def setup(n):
     )
 
     P = ml.aspreconditioner()
-    PT = mlT.aspreconditioner()
+    # PT = mlT.aspreconditioner()
 
     # x = np.random.rand(A.shape[1])
     # y = np.random.rand(A.shape[1])

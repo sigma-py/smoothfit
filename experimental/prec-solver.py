@@ -8,21 +8,15 @@ import numpy as np
 import pyamg
 import scipy
 from dolfin import (
-    BoundingBoxTree,
-    Cell,
     Constant,
     DirichletBC,
     EigenMatrix,
     FacetNormal,
-    Function,
     FunctionSpace,
-    IntervalMesh,
     Mesh,
     MeshEditor,
-    Point,
     TestFunction,
     TrialFunction,
-    XDMFFile,
     as_tensor,
     assemble,
     dot,
@@ -31,7 +25,6 @@ from dolfin import (
     grad,
 )
 from scipy import sparse
-from scipy.optimize import minimize
 from scipy.sparse.linalg import LinearOperator
 
 
@@ -90,33 +83,33 @@ def solve(mesh, Eps, degree):
 
     tol = 1.0e-10
 
-    def lower(x, on_boundary):
-        return on_boundary and x[1] < -1.0 + tol
+    # def lower(x, on_boundary):
+    #     return on_boundary and x[1] < -1.0 + tol
 
-    def upper(x, on_boundary):
-        return on_boundary and x[1] > 1.0 - tol
+    # def upper(x, on_boundary):
+    #     return on_boundary and x[1] > 1.0 - tol
 
-    def left(x, on_boundary):
-        return on_boundary and abs(x[0] + 1.0) < tol
+    # def left(x, on_boundary):
+    #     return on_boundary and abs(x[0] + 1.0) < tol
 
-    def right(x, on_boundary):
-        return on_boundary and abs(x[0] - 1.0) < tol
+    # def right(x, on_boundary):
+    #     return on_boundary and abs(x[0] - 1.0) < tol
 
-    def upper_left(x, on_boundary):
-        return on_boundary and x[1] > +1.0 - tol and x[0] < -0.8
+    # def upper_left(x, on_boundary):
+    #     return on_boundary and x[1] > +1.0 - tol and x[0] < -0.8
 
-    def lower_right(x, on_boundary):
-        return on_boundary and x[1] < -1.0 + tol and x[0] > 0.8
+    # def lower_right(x, on_boundary):
+    #     return on_boundary and x[1] < -1.0 + tol and x[0] > 0.8
 
-    bcs = [
-        # DirichletBC(V, Constant(0.0), lower_right),
-        # DirichletBC(V, Constant(0.0), upper_left),
-        DirichletBC(V, Constant(0.0), lower),
-        DirichletBC(V, Constant(0.0), upper),
-        # DirichletBC(V, Constant(0.0), upper_left, method='pointwise'),
-        # DirichletBC(V, Constant(0.0), lower_left, method='pointwise'),
-        # DirichletBC(V, Constant(0.0), lower_right, method='pointwise'),
-    ]
+    # bcs = [
+    #     # DirichletBC(V, Constant(0.0), lower_right),
+    #     # DirichletBC(V, Constant(0.0), upper_left),
+    #     DirichletBC(V, Constant(0.0), lower),
+    #     DirichletBC(V, Constant(0.0), upper),
+    #     # DirichletBC(V, Constant(0.0), upper_left, method='pointwise'),
+    #     # DirichletBC(V, Constant(0.0), lower_left, method='pointwise'),
+    #     # DirichletBC(V, Constant(0.0), lower_right, method='pointwise'),
+    # ]
 
     M = _assemble_eigen(u * v * dx).sparray()
 
@@ -135,7 +128,7 @@ def solve(mesh, Eps, degree):
         #     ]
     ).sparray()
 
-    ATA2 = np.dot(AA2.toarray().T, np.linalg.solve(M.toarray(), AA2.toarray()))
+    # ATA2 = np.dot(AA2.toarray().T, np.linalg.solve(M.toarray(), AA2.toarray()))
 
     # Find combination of Dirichlet points:
     if False:
