@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pykry
 import scipy.optimize
@@ -14,6 +16,7 @@ def fit1d(
     lmbda: float,
     degree: int = 1,
     solver: str = "dense-direct",
+    variant: str = "skfem",
 ):
     x0 = np.asarray(x0)
     if np.any(x0 < a) or np.any(x0 > b):
@@ -21,16 +24,19 @@ def fit1d(
 
     cells = np.array([np.arange(0, n), np.arange(1, n + 1)]).T
     points = np.linspace(a, b, n + 1, endpoint=True).reshape(-1, 1)
-    degree = 1
+    return fit(
+        x0[:, np.newaxis],
+        y0,
+        points,
+        cells,
+        lmbda,
+        degree,
+        solver=solver,
+        variant=variant,
+    )
 
-    return fit(x0[:, np.newaxis], y0, points, cells, degree, lmbda, solver=solver)
 
-
-def fit2d(x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "sparse"):
-    return fit(x0, y0, points, cells, degree, lmbda, solver=solver)
-
-
-def fit(x0, y0, points, cells, degree: int, lmbda: float, solver: str):
+def fit(*args, variant="skfem", **kwargs):
     """We're trying to minimize
 
        1/2 sum_i (f(xi) - yi)^2  +  ||lmbda Delta f||^2_{L^2(Omega)}
@@ -50,6 +56,60 @@ def fit(x0, y0, points, cells, degree: int, lmbda: float, solver: str):
     positive-semidefinite. So far, we simply use sparse CG, but a good idea for a
     preconditioner is highly welcome.
     """
+    if variant == "dolfin":
+        return _fit_dolfin(*args, **kwargs)
+
+    assert variant == "skfem"
+    return _fit_skfem(*args, **kwargs)
+
+
+def _fit_skfem(
+    x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"
+):
+    import skfem
+    from skfem.helpers import dot
+    from skfem.models.poisson import laplace
+
+    assert degree == 1
+
+    if cells.shape[1] == 2:
+        mesh = skfem.MeshLine(points.T, cells.T)
+        element = skfem.ElementLineP1()
+    else:
+        assert cells.shape[1] == 3
+        mesh = skfem.MeshTri(points.T, cells.T)
+        element = skfem.ElementTriP1()
+
+    @skfem.BilinearForm
+    def mass(u, v, _):
+        return u * v
+
+    @skfem.BilinearForm
+    def flux(u, v, w):
+        return dot(w.n, u.grad) * v
+
+    basis = skfem.InteriorBasis(mesh, element)
+    facet_basis = skfem.FacetBasis(basis.mesh, basis.elem)
+
+    lap = skfem.asm(laplace, basis)
+    boundary_terms = skfem.asm(flux, facet_basis)
+
+    A = lap - boundary_terms
+    A *= lmbda
+
+    # get the evaluation matrix
+    E = basis.probes(x0.T)
+
+    # mass matrix
+    M = skfem.asm(mass, basis)
+
+    x = _solve(A, M, E, y0, solver)
+    return basis, x
+
+
+def _fit_dolfin(
+    x0, y0, points, cells, lmbda: float, degree: int = 1, solver: str = "lsqr"
+):
     from dolfin import (
         BoundingBoxTree,
         Cell,
@@ -57,7 +117,6 @@ def fit(x0, y0, points, cells, degree: int, lmbda: float, solver: str):
         FacetNormal,
         Function,
         FunctionSpace,
-        IntervalMesh,
         Mesh,
         MeshEditor,
         Point,
@@ -195,11 +254,13 @@ def _solve(A, M, E, y0, solver):
         )
         b = np.concatenate([np.zeros(A.shape[0]), y0])
         if solver == "lsqr":
-            x = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+            out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
         else:
             assert solver == "lsmr"
-            x = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
-        x = x[0]
+            out = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
+        x = out[0]
+        if out[4] > 1.0e-10:
+            warnings.warn(f"{solver} residual 2-norm is {out[4]}.")
     else:
 
         def f(x):

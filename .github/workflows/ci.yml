@@ -1,6 +1,12 @@
 name: ci
 
-on: [pull_request]
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 
 jobs:
   lint:
@@ -21,31 +27,17 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
     steps:
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     - uses: actions/checkout@v2
-    - name: Add FEniCS PPA
+    - name: Test with tox
       run: |
-        sudo add-apt-repository ppa:fenics-packages/fenics
-        sudo apt-get update
-    # blas for numpy
-    - name: Install system dependencies
-      run: sudo apt-get install -y libblas-dev python3-dolfin
-   - name: Add ~/.local/bin to $PATH
-     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-     run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-    - name: Install package
-      run: |
-        python3 -m pip install .
-    - name: Install test dependencies
-      run: python3 -m pip install matplotlib meshzoo exdown
-    - name: Test with pytest
-      run: |
-        python3 -m pip install pytest pytest-cov
-        cd test/
-        pytest --cov smoothfit
-    # Can't access system dolfin for some reason:
-    # - name: Test with tox
-    #   run: |
-    #     python3 -m pip install tox
-    #     tox
+        pip install tox
+        tox
     - uses: codecov/codecov-action@v1
+      if: ${{ matrix.python-version == '3.9' }}

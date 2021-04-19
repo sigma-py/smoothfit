@@ -55,10 +55,8 @@ x0 = np.linspace(-1.0, 1.0, 21)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
-u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
-x = np.linspace(a, b, 201)
-vals = [u(xx) for xx in x]
-plt.plot(x, vals, "-", label="smooth fit")
+basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
+plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.ylim(-0.1)
 plt.grid()
@@ -100,10 +98,8 @@ y0 += 1.0e-1 * (2 * np.random.rand(n) - 1)
 plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
-u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
-x = np.linspace(a, b, 201)
-vals = [u(xx) for xx in x]
-plt.plot(x, vals, "-", label="smooth fit")
+basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
+plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.grid()
 plt.show()
@@ -148,13 +144,10 @@ y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 # create a triangle mesh for the square
 points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
 
-u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
+basis, u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
 
 # Write the function to a file
-from dolfin import XDMFFile
-
-xdmf = XDMFFile("temp.xdmf")
-xdmf.write(u)
+basis.mesh.save("out.vtu", point_data={"u": u})
 ```
 
 This example approximates a function from _R<sup>2</sup>_ to _R_ (without noise in the

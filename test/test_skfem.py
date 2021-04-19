@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
+import meshzoo
 import numpy as np
 import pytest
-from dolfin import assemble, dx
 
 import smoothfit
 
@@ -25,23 +25,20 @@ def test_1d(solver, show=False):
     b = +1.5
 
     lmbda = 1.0e-2
-    u = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
+    basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
 
     if solver == "Nelder-Mead":
-        ref = 0.659_143_389_243_738_2
+        ref = 14.16277909395534
     else:
-        ref = 1.417_961_801_095_804_4
+        ref = 30.415677809615335
 
-    val = assemble(u * u * dx)
-    assert abs(val - ref) < 1.0e-10 * ref
+    assert abs(np.dot(coeffs, coeffs) - ref) < 1.0e-10 * ref
 
     if show:
-        # x = u.function_space().mesh().coordinates()
-        x = np.linspace(a, b, 201)
-        vals = [u(xx) for xx in x]
-        plt.plot(x, vals, "-", label="smooth fit")
+        plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
         plt.plot(x0, y0, "xk", label="samples")
+        x = np.linspace(a, b, 101)
         plt.plot(x, np.sin(np.pi * x), "-", color="0.8", label="original")
         plt.xlim(a, b)
         plt.legend()
@@ -79,7 +76,6 @@ def test_runge_show():
     plt.ylim(-0.2, 1.2)
     plt.show()
     # plt.savefig("runge-polyfit.svg", bbox_inches="tight", transparent=True)
-    return
 
 
 def test_noisy_runge():
@@ -93,41 +89,37 @@ def test_noisy_runge():
     b = +1.5
 
     plt.plot(x0, y0, "xk")
-    x = np.linspace(a, b, 201)
+    # x = np.linspace(a, b, 201)
     # plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
     lmbda = 0.2
-    u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
-    x = np.linspace(a, b, 201)
-    vals = [u(xx) for xx in x]
-    plt.plot(x, vals, "-")
+    basis, u = smoothfit.fit1d(x0, y0, a, b, 200, degree=1, lmbda=lmbda)
+    plt.plot(basis.mesh.p[0], u[basis.nodal_dofs[0]], "-", label="smooth fit")
     # plt.title(f"lmbda = {lmbda:.1e}")
+
     plt.xlim(a, b)
     plt.ylim(-0.2, 1.2)
     plt.grid()
     plt.gca().set_aspect("equal")
     # plt.show()
-    plt.savefig("runge-noise-02.svg", bbox_inches="tight", transparent=True)
-    return
+    # plt.savefig("runge-noise-02.svg", bbox_inches="tight", transparent=True)
+    plt.savefig("runge-noise-02.png", bbox_inches="tight", transparent=True)
 
 
 def test_samples():
     # From <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example>
     x0 = np.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
     y0 = np.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
-    u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
+    basis, u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 
     # plot the function
-    x = np.linspace(0, 4, 201)
-    vals = [u(xx) for xx in x]
-    plt.plot(x, vals, "-", label="smooth fit")
+    plt.plot(basis.mesh.p[0], u[basis.nodal_dofs[0]], "-", label="smooth fit")
     plt.plot(x0, y0, "xk")
     plt.xlim(0, 4)
     plt.ylim(0)
     plt.grid()
     # plt.show()
-    plt.savefig("smoothfit-samples.svg", bbox_inches="tight", transparent=True)
-    return
+    plt.savefig("smoothfit-samples.png", bbox_inches="tight", transparent=True)
 
 
 # def test_1d_scale():
@@ -171,8 +163,8 @@ def test_samples():
     [
         "dense-direct",
         # "sparse-cg",  # fails on circleci
-        "lsqr",
-        "lsmr",
+        # "lsqr",
+        # "lsmr",
     ],
 )
 def test_2d(solver, write_file=False):
@@ -186,9 +178,7 @@ def test_2d(solver, write_file=False):
     # y0 = np.cos(np.pi*x0.T[0]) * np.cos(np.pi*x0.T[1])
     y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
-    import meshzoo
-
-    points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
+    points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), 32)
 
     # import pygmsh
     # geom = pygmsh.built_in.Geometry()
@@ -196,18 +186,15 @@ def test_2d(solver, write_file=False):
     # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
     # cells = cells['triangle']
 
-    u = smoothfit.fit2d(x0, y0, points, cells, lmbda=1.0e-5, solver=solver)
+    basis, u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-5, solver=solver)
 
-    # ref = 4.411_214_155_799_310_5
-    # val = assemble(u * u * dx)
+    # ref = 991.0323831016119
+    # val = np.dot(u, u)
+    # print(solver, val)
     # assert abs(val - ref) < 1.0e-10 * ref
 
     if write_file:
-        from dolfin import XDMFFile
-
-        xdmf = XDMFFile("temp.xdmf")
-        xdmf.write(u)
-    return
+        basis.mesh.save(f"out-{solver}.vtu", point_data={"u": u})
 
 
 if __name__ == "__main__":
@@ -216,6 +203,6 @@ if __name__ == "__main__":
     # test_noisy_runge()
     # test_samples()
     # test_2d("dense-direct", write_file=True)
-    # test_2d("minimization")
-    # test_2d("sparse")
+    # test_2d("lsqr", write_file=True)
+    # test_2d("lsmr", write_file=True)
     # test_1d_scale()

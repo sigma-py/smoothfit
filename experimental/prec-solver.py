@@ -338,7 +338,7 @@ def solve(mesh, Eps, degree):
     out = krypy.linsys.Gmres(linear_system, tol=1.0e-12, explicit_residual=True)
     out.xk = out.xk.reshape(b.shape)
     print("done.")
-    print("  res: {}".format(out.resnorms[-1]))
+    print(f"  res: {out.resnorms[-1]}")
     print(
         "  unprec res: {}".format(
             np.linalg.norm(b - op.dot(out.xk)) / np.linalg.norm(b)
@@ -346,8 +346,8 @@ def solve(mesh, Eps, degree):
     )
     # The error isn't useful here; only with the nullspace removed
     # print('  error: {}'.format(np.linalg.norm(out.xk - x)))
-    print("  its: {}".format(len(out.resnorms)))
-    print("  duration: {}s".format(time.time() - t))
+    print(f"  its: {len(out.resnorms)}")
+    print(f"  duration: {time.time() - t}s")
 
     # preconditioned solver
     ml = pyamg.smoothed_aggregation_solver(AA2)
@@ -392,14 +392,14 @@ def solve(mesh, Eps, degree):
         pass
     out_prec.xk = out_prec.xk.reshape(b.shape)
     print("done.")
-    print("  res: {}".format(out_prec.resnorms[-1]))
+    print(f"  res: {out_prec.resnorms[-1]}")
     print(
         "  unprec res: {}".format(
             np.linalg.norm(b - op.dot(out_prec.xk)) / np.linalg.norm(b)
         )
     )
-    print("  its: {}".format(len(out_prec.resnorms)))
-    print("  duration: {}s".format(time.time() - t))
+    print(f"  its: {len(out_prec.resnorms)}")
+    print(f"  duration: {time.time() - t}s")
 
     plt.semilogy(out.resnorms, label="original")
     plt.semilogy(out_prec.resnorms, label="preconditioned")
