@@ -55,7 +55,7 @@ x0 = np.linspace(-1.0, 1.0, 21)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
-basis, u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
+basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
 plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.ylim(-0.1)
@@ -98,7 +98,7 @@ y0 += 1.0e-1 * (2 * np.random.rand(n) - 1)
 plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
-basis, u = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
+basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=lmbda)
 plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
 plt.grid()
