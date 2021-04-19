@@ -36,7 +36,14 @@ multidimensional, too.
 
 #### Runge's example
 
-<img src="https://nschloe.github.io/smoothfit/runge.svg" width="60%">
+<img src="https://nschloe.github.io/smoothfit/runge.webp" width="60%">
+
+[Runge's example function](https://en.wikipedia.org/wiki/Runge%27s_phenomenon) is a
+tough nut for classical polynomial regression.
+
+If there is no noise in the input data, the parameter `lmbda` can be chosen quite small
+such that all data points are approximated well. Note that there are no oscillations in
+the output function `u`.
 
 ```python
 import matplotlib.pyplot as plt
@@ -50,11 +57,12 @@ b = +1.5
 x = np.linspace(a, b, 201)
 plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
-# 21 sample points
+# sample points
 x0 = np.linspace(-1.0, 1.0, 21)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
+# smoothfit
 basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
 plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
@@ -62,14 +70,6 @@ plt.ylim(-0.1)
 plt.grid()
 plt.show()
 ```
-
-[Runge's example function](https://en.wikipedia.org/wiki/Runge%27s_phenomenon) is a
-tough nut for classical polynomial regression.
-
-If there is no noise in the input data, the parameter `lmbda` can be chosen quite small
-such that all data points are approximated well. Note that there are no oscillations
-in the output function `u`.
-
 
 #### Runge's example with noise
 
