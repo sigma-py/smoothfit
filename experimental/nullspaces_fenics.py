@@ -1,6 +1,5 @@
 import meshzoo
 import numpy as np
-import scipy.linalg
 from dolfin import (
     EigenMatrix,
     Expression,
@@ -10,8 +9,6 @@ from dolfin import (
     MeshEditor,
     TestFunction,
     TrialFunction,
-    UnitIntervalMesh,
-    UnitSquareMesh,
     assemble,
     dot,
     ds,

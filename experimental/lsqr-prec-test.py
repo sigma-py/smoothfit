@@ -1,10 +1,7 @@
-import krypy
 import matplotlib.pyplot as plt
 import meshzoo
 import numpy as np
-import perfplot
 import pyamg
-import pykry
 import scipy.optimize
 from dolfin import (
     BoundingBoxTree,
@@ -12,15 +9,12 @@ from dolfin import (
     DirichletBC,
     EigenMatrix,
     FacetNormal,
-    Function,
     FunctionSpace,
-    IntervalMesh,
     Mesh,
     MeshEditor,
     Point,
     TestFunction,
     TrialFunction,
-    UnitSquareMesh,
     assemble,
     dot,
     ds,
@@ -28,7 +22,6 @@ from dolfin import (
     grad,
 )
 from scipy import sparse
-from scipy.sparse.linalg import spsolve
 
 np.random.seed(123)
 
@@ -116,14 +109,14 @@ def setup(n):
     # mass matrix
     M = _assemble_eigen(u * v * dx).sparray()
 
-    # Neumann preconditioner
-    An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
+    # # Neumann preconditioner
+    # An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
 
-    # Dirichlet preconditioner
-    Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
-    bc = DirichletBC(V, 0.0, "on_boundary")
-    bc.apply(Ad)
-    Ad = Ad.sparray()
+    # # Dirichlet preconditioner
+    # Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
+    # bc = DirichletBC(V, 0.0, "on_boundary")
+    # bc.apply(Ad)
+    # Ad = Ad.sparray()
 
     # Aq = _assemble_eigen(
     #     dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds - dot(n, grad(v)) * u * ds
