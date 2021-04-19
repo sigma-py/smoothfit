@@ -159,7 +159,7 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 
 #### Polynomial fitting/regression
 
-<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="60%">
+<img src="https://nschloe.github.io/smoothfit/runge-polyfit.webp" width="60%">
 
 The classical approach to data fitting is [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
