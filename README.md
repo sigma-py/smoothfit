@@ -73,9 +73,12 @@ plt.show()
 
 #### Runge's example with noise
 
-<img src="https://nschloe.github.io/smoothfit/runge-noise-0001.svg" width="95%"> | <img src="https://nschloe.github.io/smoothfit/runge-noise-005.svg" width="95%"> | <img src="https://nschloe.github.io/smoothfit/runge-noise-02.svg" width="95%">
-:-------------------:|:------------------:|:----------:|
-`lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-lambda.webp" width="60%">
+
+If the data is noisy, `lmbda` needs to be chosen more carefully. If too small, the
+approximation tries to resolve _all_ data points, resulting in many small oscillations.
+If it's chosen too large, no details are resolved, not even those of the underlying
+data.
 
 ```python
 import matplotlib.pyplot as plt
@@ -104,12 +107,6 @@ plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 plt.grid()
 plt.show()
 ```
-
-If the data is noisy, `lmbda` needs to be chosen more carefully. If too small, the
-approximation tries to resolve _all_ data points, resulting in many small oscillations.
-If it's chosen too large, no details are resolved, not even those of the underlying
-data.
-
 
 #### Few samples
 
