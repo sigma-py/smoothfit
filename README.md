@@ -36,7 +36,14 @@ multidimensional, too.
 
 #### Runge's example
 
-<img src="https://nschloe.github.io/smoothfit/runge.svg" width="60%">
+<img src="https://nschloe.github.io/smoothfit/runge.webp" width="60%">
+
+[Runge's example function](https://en.wikipedia.org/wiki/Runge%27s_phenomenon) is a
+tough nut for classical polynomial regression.
+
+If there is no noise in the input data, the parameter `lmbda` can be chosen quite small
+such that all data points are approximated well. Note that there are no oscillations in
+the output function `u`.
 
 ```python
 import matplotlib.pyplot as plt
@@ -50,11 +57,12 @@ b = +1.5
 x = np.linspace(a, b, 201)
 plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
-# 21 sample points
+# sample points
 x0 = np.linspace(-1.0, 1.0, 21)
 y0 = 1 / (1 + 25 * x0 ** 2)
 plt.plot(x0, y0, "xk")
 
+# smoothfit
 basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 1000, degree=1, lmbda=1.0e-6)
 plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 
@@ -63,19 +71,14 @@ plt.grid()
 plt.show()
 ```
 
-[Runge's example function](https://en.wikipedia.org/wiki/Runge%27s_phenomenon) is a
-tough nut for classical polynomial regression.
-
-If there is no noise in the input data, the parameter `lmbda` can be chosen quite small
-such that all data points are approximated well. Note that there are no oscillations
-in the output function `u`.
-
-
 #### Runge's example with noise
 
-<img src="https://nschloe.github.io/smoothfit/runge-noise-0001.svg" width="95%"> | <img src="https://nschloe.github.io/smoothfit/runge-noise-005.svg" width="95%"> | <img src="https://nschloe.github.io/smoothfit/runge-noise-02.svg" width="95%">
-:-------------------:|:------------------:|:----------:|
-`lmbda = 0.001`      |  `lmbda = 0.05`    |  `lmbda = 0.2`  |
+<img src="https://nschloe.github.io/smoothfit/runge-noise-lambda.webp" width="60%">
+
+If the data is noisy, `lmbda` needs to be chosen more carefully. If too small, the
+approximation tries to resolve _all_ data points, resulting in many small oscillations.
+If it's chosen too large, no details are resolved, not even those of the underlying
+data.
 
 ```python
 import matplotlib.pyplot as plt
@@ -104,12 +107,6 @@ plt.plot(basis.mesh.p[0], coeffs[basis.nodal_dofs[0]], "-", label="smooth fit")
 plt.grid()
 plt.show()
 ```
-
-If the data is noisy, `lmbda` needs to be chosen more carefully. If too small, the
-approximation tries to resolve _all_ data points, resulting in many small oscillations.
-If it's chosen too large, no details are resolved, not even those of the underlying
-data.
-
 
 #### Few samples
 
@@ -159,7 +156,7 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 
 #### Polynomial fitting/regression
 
-<img src="https://nschloe.github.io/smoothfit/runge-polyfit.svg" width="60%">
+<img src="https://nschloe.github.io/smoothfit/runge-polyfit.webp" width="60%">
 
 The classical approach to data fitting is [polynomial
 regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
