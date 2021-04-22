@@ -86,11 +86,11 @@ def setup(n):
     PT = (P @ I).T
     PT = scipy.sparse.csr_matrix(PT)
 
-    # make sure it's really the transpose
-    x = rng.random(A.shape[1])
-    y = rng.random(A.shape[1])
-    print(np.dot(x, P @ y))
-    print(np.dot(PT @ x, y))
+    # # make sure it's really the transpose
+    # x = rng.random(A.shape[1])
+    # y = rng.random(A.shape[1])
+    # print(np.dot(x, P @ y))
+    # print(np.dot(PT @ x, y))
 
     def matvec(x):
         return P @ x
