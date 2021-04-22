@@ -77,86 +77,33 @@ def setup(n):
     mlT = pyamg.smoothed_aggregation_solver(
         A.T, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
     )
-
     P = ml.aspreconditioner()
     # PT = mlT.aspreconditioner()
 
-    # x = rng.random(A.shape[1])
-    # y = rng.random(A.shape[1])
+    # construct transpose -- dense, super expensive!
+    I = np.eye(P.shape[0])
+    PT = (P @ I).T
+    PT = scipy.sparse.csr_matrix(PT)
 
-    P = [
-        (
-            scipy.sparse.linalg.LinearOperator(
-                A.shape, matvec=lambda x: ml.solve(x, tol=1.0e-8)
-            ),
-            scipy.sparse.linalg.LinearOperator(
-                A.shape, matvec=lambda x: mlT.solve(x, tol=1.0e-8)
-            ),
-        ),
+    # make sure it's really the transpose
+    x = rng.random(A.shape[1])
+    y = rng.random(A.shape[1])
+    print(np.dot(x, P @ y))
+    print(np.dot(PT @ x, y))
+
+    def matvec(x):
+        return P @ x
+
+    def rmatvec(y):
+        return PT @ y
+
+    precs = [
+        scipy.sparse.linalg.LinearOperator(A.shape, matvec=matvec, rmatvec=rmatvec)
         # not working well:
         # (ml.aspreconditioner(), mlT.aspreconditioner())
     ]
-    # P.append(scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
-    # ))
-    # P.append(scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=3)
-    # ))
-    # P.append(scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=4)
-    # ))
-    # P.append(scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=5)
-    # ))
-    # P.append(scipy.sparse.linalg.LinearOperator(
-    #     An.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=10)
-    # ))
 
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi")
-    # P1 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi")
-    # P2 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(
-    #     A, coarse_solver="gauss_seidel", max_coarse=100
-    # )
-    # P2 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=1)
-    # )
-
-    # accel="cg" is a really bad idea
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
-    # P3 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape,
-    #     matvec=lambda x: ml.solve(x, tol=1.0e-10, accel="cg")
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
-    # P3 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=1000)
-    # P4 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=2)
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
-    # P5 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=0.0, maxiter=10)
-    # )
-
-    # ml = pyamg.smoothed_aggregation_solver(A, coarse_solver="jacobi", max_coarse=100)
-    # P6 = scipy.sparse.linalg.LinearOperator(
-    #     A.shape, matvec=lambda x: ml.solve(x, tol=1.0e-10)
-    # )
-
-    return A, E, M, P, y0
+    return A, E, M, precs, y0
 
 
 def dense_direct(data):
@@ -300,36 +247,44 @@ def a_identity(data):
     b = np.concatenate([np.zeros(n), y0])
     out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
 
-    num_iter = out[2]
-    print(f"{n = }, {m = }, {num_iter = }")
+    # num_iter = out[2]
+    # print(f"{n = }, {m = }, {num_iter = }")
 
     x = out[0]
     return x
 
 
-def _lprec(A, E, P_PT, y0):
-    P, PT = P_PT
+def _lprec(A, E, P, y0):
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == E.shape[1]
+    n = A.shape[0]
+    m = E.shape[0]
+
     lop = scipy.sparse.linalg.LinearOperator(
-        (A.shape[0] + E.shape[0], A.shape[1]),
+        (n + m, n),
         matvec=lambda x: np.concatenate([P @ (A @ x), E @ x]),
-        rmatvec=lambda y: A.T @ (PT @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+        rmatvec=lambda y: A.T @ (P.T @ y[:n]) + E.T @ y[n:],
     )
 
     b = np.concatenate([np.zeros(A.shape[0]), y0])
     out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
-
     x = out[0]
     return x
 
 
 def _rprec(A, E, P, y0):
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == E.shape[1]
+    n = A.shape[0]
+    m = E.shape[0]
+
     lop = scipy.sparse.linalg.LinearOperator(
-        (A.shape[0] + E.shape[0], A.shape[1]),
+        (n + m, n),
         matvec=lambda x: np.concatenate([A @ (P @ x), E @ x]),
-        rmatvec=lambda y: P.T @ (A.T @ y[: A.shape[0]]) + E.T @ y[A.shape[0] :],
+        rmatvec=lambda y: P.T @ (A.T @ y[:n]) + E.T @ y[n:],
     )
 
-    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    b = np.concatenate([np.zeros(n), y0])
     out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
 
     x = out[0]
@@ -340,31 +295,6 @@ def _rprec(A, E, P, y0):
 def lsqr_prec0(data):
     A, E, _, P, y0 = data
     return _lprec(A, E, P[0], y0)
-
-
-def lsqr_prec1(data):
-    A, E, _, P, y0 = data
-    return _lprec(A, E, P[1], y0)
-
-
-def lsqr_prec2(data):
-    A, E, _, P, y0 = data
-    return _lprec(A, E, P[2], y0)
-
-
-def lsqr_prec3(data):
-    A, E, _, P, y0 = data
-    return _lprec(A, E, P[3], y0)
-
-
-def lsqr_prec4(data):
-    A, E, _, P, y0 = data
-    return _lprec(A, E, P[4], y0)
-
-
-def lsqr_prec5(data):
-    A, E, _, P, y0 = data
-    return _lprec(A, E, P[5], y0)
 
 
 pb = perfplot.live(
@@ -379,13 +309,7 @@ pb = perfplot.live(
         # scipy_lsqr_without_m,
         # scipy_lsmr_without_m,
         a_identity,
-        # lsqr_prec0,
-        # lsqr_prec1,
-        # lsqr_prec2,
-        # lsqr_prec3,
-        # lsqr_prec3,
-        # lsqr_prec4,
-        # lsqr_prec5,
+        lsqr_prec0,
     ],
     n_range=range(10, 1001, 10),
     equality_check=None,
