@@ -12,9 +12,6 @@ points, cells = meshzoo.rectangle_tri((0.0, 0.0), (1.0, 1.0), 35)
 # points, cells = meshzoo.disk(6, 25)
 
 
-print("skfem")
-
-
 @fem.BilinearForm
 def flux(u, v, w):
     return dot(w.n, u.grad) * v

@@ -358,15 +358,26 @@ def scipy_lsqr_without_m(data):
 
 
 def a_identity(data):
+    """Super simple: A is the identity matrix. For testing purposes. Always uses around 10
+    LSQR iterations, independent of n and m."""
     A, E, _, _, y0 = data
+
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == E.shape[1]
+    n = A.shape[0]
+    m = E.shape[0]
+
     lop = scipy.sparse.linalg.LinearOperator(
-        (A.shape[0] + E.shape[0], A.shape[1]),
+        (n + m, n),
         matvec=lambda x: np.concatenate([x, E @ x]),
-        rmatvec=lambda y: y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+        rmatvec=lambda y: y[:n] + E.T @ y[n:],
     )
 
-    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    b = np.concatenate([np.zeros(n), y0])
     out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+
+    num_iter = out[2]
+    print(f"{n = }, {m = }, {num_iter = }")
 
     x = out[0]
     return x
