@@ -5,74 +5,17 @@ import perfplot
 import pyamg
 import pykry
 import scipy.optimize
-from dolfin import (
-    BoundingBoxTree,
-    Cell,
-    DirichletBC,
-    EigenMatrix,
-    FacetNormal,
-    FunctionSpace,
-    Mesh,
-    MeshEditor,
-    Point,
-    TestFunction,
-    TrialFunction,
-    assemble,
-    dot,
-    ds,
-    dx,
-    grad,
-)
+import skfem
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
+from skfem.helpers import dot
+from skfem.models.poisson import laplace
 
-np.random.seed(123)
-
-
-def _build_eval_matrix(V, points):
-    """Build the sparse m-by-n matrix that maps a coefficient set for a function in V to
-    the values of that function at m given points."""
-    # See <https://www.allanswered.com/post/lkbkm/#zxqgk>
-    mesh = V.mesh()
-
-    bbt = BoundingBoxTree()
-    bbt.build(mesh)
-    dofmap = V.dofmap()
-    el = V.element()
-    sdim = el.space_dimension()
-
-    rows = []
-    cols = []
-    data = []
-    for i, x in enumerate(points):
-        cell_id = bbt.compute_first_entity_collision(Point(*x))
-        cell = Cell(mesh, cell_id)
-        coordinate_dofs = cell.get_vertex_coordinates()
-
-        rows.append(np.full(sdim, i))
-        cols.append(dofmap.cell_dofs(cell_id))
-
-        v = el.evaluate_basis_all(x, coordinate_dofs, cell_id)
-        data.append(v)
-
-    rows = np.concatenate(rows)
-    cols = np.concatenate(cols)
-    data = np.concatenate(data)
-
-    m = len(points)
-    n = V.dim()
-    matrix = sparse.csr_matrix((data, (rows, cols)), shape=(m, n))
-    return matrix
-
-
-def _assemble_eigen(form):
-    L = EigenMatrix()
-    assemble(form, tensor=L)
-    return L
+rng = np.random.default_rng(0)
 
 
 def setup(n):
-    x0 = np.random.rand(n, 2) - 0.5
+    x0 = rng.random((n, 2)) - 0.5
     # y0 = np.ones(n)
     # y0 = x0[:, 0]
     # y0 = x0[:, 0]**2
@@ -82,44 +25,42 @@ def setup(n):
 
     points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), n)
 
-    # Convert points, cells to dolfin mesh
-    editor = MeshEditor()
-    mesh = Mesh()
-    # topological and geometrical dimension 2
-    editor.open(mesh, "triangle", 2, 2, 1)
-    editor.init_vertices(len(points))
-    editor.init_cells(len(cells))
-    for k, point in enumerate(points):
-        editor.add_vertex(k, point[:2])
-    for k, cell in enumerate(cells.astype(np.uintp)):
-        editor.add_cell(k, cell)
-    editor.close()
+    mesh = skfem.MeshTri(points.T.copy(), cells.T.copy())
+    element = skfem.ElementTriP1()
 
-    degree = 1
-    V = FunctionSpace(mesh, "CG", degree)
+    @skfem.BilinearForm
+    def mass(u, v, _):
+        return u * v
 
-    u = TrialFunction(V)
-    v = TestFunction(V)
-    mesh = V.mesh()
-    n = FacetNormal(mesh)
+    @skfem.BilinearForm
+    def flux(u, v, w):
+        return dot(w.n, u.grad) * v
 
-    A = _assemble_eigen(dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds).sparray()
-    # lmbda = 1.0
+    basis = skfem.InteriorBasis(mesh, element)
+    facet_basis = skfem.FacetBasis(basis.mesh, basis.elem)
+
+    lap = skfem.asm(laplace, basis)
+    boundary_terms = skfem.asm(flux, facet_basis)
+
+    A = lap - boundary_terms
     # A *= lmbda
 
-    E = _build_eval_matrix(V, x0)
+    # get the evaluation matrix
+    E = basis.probes(x0.T)
 
     # mass matrix
-    M = _assemble_eigen(u * v * dx).sparray()
+    M = skfem.asm(mass, basis)
+
+    # x = _solve(A, M, E, y0, solver)
 
     # # Neumann preconditioner
     # An = _assemble_eigen(dot(grad(u), grad(v)) * dx).sparray()
 
-    # Dirichlet preconditioner
-    Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
-    bc = DirichletBC(V, 0.0, "on_boundary")
-    bc.apply(Ad)
-    # Ad = Ad.sparray()
+    # # Dirichlet preconditioner
+    # Ad = _assemble_eigen(dot(grad(u), grad(v)) * dx)
+    # bc = DirichletBC(V, 0.0, "on_boundary")
+    # bc.apply(Ad)
+    # # Ad = Ad.sparray()
 
     # Aq = _assemble_eigen(
     #     dot(grad(u), grad(v)) * dx - dot(n, grad(u)) * v * ds - dot(n, grad(v)) * u * ds
@@ -140,8 +81,8 @@ def setup(n):
     P = ml.aspreconditioner()
     # PT = mlT.aspreconditioner()
 
-    # x = np.random.rand(A.shape[1])
-    # y = np.random.rand(A.shape[1])
+    # x = rng.random(A.shape[1])
+    # y = rng.random(A.shape[1])
 
     P = [
         (
@@ -337,23 +278,6 @@ def scipy_lsmr_without_m(data):
     x = out[0]
     # num_iter = out[2]
     # conda = out[6]
-    return x
-
-
-def scipy_lsqr_without_m(data):
-    A, E, _, _, y0 = data
-
-    lop = scipy.sparse.linalg.LinearOperator(
-        (A.shape[0] + E.shape[0], A.shape[1]),
-        matvec=lambda x: np.concatenate([A @ x, E @ x]),
-        rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
-    )
-
-    b = np.concatenate([np.zeros(A.shape[0]), y0])
-    out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
-
-    x = out[0]
-    # num_iter = out[2]
     return x
 
 
