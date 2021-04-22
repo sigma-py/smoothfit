@@ -74,9 +74,10 @@ def setup(n):
     ml = pyamg.smoothed_aggregation_solver(
         A, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
     )
-    mlT = pyamg.smoothed_aggregation_solver(
-        A.T, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
-    )
+    # mlT = pyamg.smoothed_aggregation_solver(
+    #     A.T, coarse_solver="jacobi", symmetry="nonsymmetric", max_coarse=100
+    # )
+
     P = ml.aspreconditioner()
     # PT = mlT.aspreconditioner()
 
