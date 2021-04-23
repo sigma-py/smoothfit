@@ -1,3 +1,5 @@
+"""Play around with preconditioners for LSQR.
+"""
 import krypy
 import meshzoo
 import numpy as np
@@ -230,8 +232,8 @@ def scipy_lsmr_without_m(data):
 
 
 def a_identity(data):
-    """Super simple: A is the identity matrix. For testing purposes. Always uses around 10
-    LSQR iterations, independent of n and m."""
+    """Super simple: A is the identity matrix. For testing purposes. Always uses around
+    10 LSQR iterations, independent of n and m."""
     A, E, _, _, y0 = data
 
     assert A.shape[0] == A.shape[1]
@@ -267,7 +269,7 @@ def _lprec(A, E, P, y0):
         rmatvec=lambda y: A.T @ (P.T @ y[:n]) + E.T @ y[n:],
     )
 
-    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    b = np.concatenate([np.zeros(n), y0])
     out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
     x = out[0]
     return x

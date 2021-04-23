@@ -18,7 +18,7 @@ Given experimental data, it is often desirable to produce a function whose value
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
 
-<img src="https://nschloe.github.io/smoothfit/eq0.png" width="40%">
+<img src="https://nschloe.github.io/smoothfit/eq0.svg" width="40%">
 
 (A similar idea is used in for data smoothing in signal processing; see, e.g.,
 section 8.3 in [this
