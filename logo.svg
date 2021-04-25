@@ -223,7 +223,7 @@
        id="path853" />
     <path
        d="M1087.438 120.872c5.28 0 11.04-1.12 16-2.72l-4.16-14.56c-2.24.96-4.96 1.44-7.36 1.44-7.36 0-12-4.32-12-11.04v-35.68h19.52v-16.32h-19.52v-22.56h-20.16v22.56h-10.88v16.32h10.88v36.96c0 15.68 10.4 25.6 27.68 25.6z"
-       fill="#00ff00"
+       fill="currentColor"
        style="-inkscape-font-specification:'Cantarell Bold';fill-opacity:1;stroke:none"
        id="path855" />
   </g>
