@@ -209,6 +209,11 @@ plt.grid()
 plt.show()
 ```
 
+#### Disk
+<p align="center">
+  <img alt="smoothfit" src="https://nschloe.github.io/smoothfit/disk.svg" width="60%">
+</p>
+
 ### License
 smoothfit is published under the [GPLv3+
 license](https://www.gnu.org/licenses/gpl-3.0.en.html).
