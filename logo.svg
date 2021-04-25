@@ -215,16 +215,16 @@
        id="path849" />
     <path
        d="M864.226 119.752h20.16v-55.04c4.64-4.32 9.76-6.24 15.68-6.24 10.08 0 15.2 5.6 15.2 16.16v45.12h20.32v-48.8c0-18.72-10.88-30.24-28.64-30.24-8.32 0-16 2.72-22.56 8.16V1.512h-20.16z"
-       style="-inkscape-font-specification:'Cantarell Bold';fill:#969696;fill-opacity:1;stroke:none"
+       style="-inkscape-font-specification:'Cantarell Bold';fill:#ff0000;fill-opacity:1;stroke:none"
        id="path851" />
     <path
        d="M959.628 119.752h19.68v-61.44h22.4v-16.32h-22.4v-12.32c0-8.32 4.48-12.8 12.96-12.8 4 0 8.96.8 11.84 2.4l4.16-14.72c-4.96-2.88-11.04-4.64-17.6-4.64-18.56 0-31.04 12.64-31.04 31.52v10.56h-12v16.32h12zm64.96-92.16c7.68 0 12.64-4.8 12.64-12.48 0-7.68-4.96-12.64-12.64-12.64-7.68 0-12.48 4.96-12.48 12.64 0 7.68 4.8 12.48 12.48 12.48zm-10.24 92.16h20.32v-77.76h-20.32z"
-       style="-inkscape-font-specification:'Cantarell Bold';fill:#ff0000;fill-opacity:1;stroke:none"
+       style="-inkscape-font-specification:'Cantarell Bold';fill:currentColor;fill-opacity:1;stroke:none"
        id="path853" />
     <path
        d="M1087.438 120.872c5.28 0 11.04-1.12 16-2.72l-4.16-14.56c-2.24.96-4.96 1.44-7.36 1.44-7.36 0-12-4.32-12-11.04v-35.68h19.52v-16.32h-19.52v-22.56h-20.16v22.56h-10.88v16.32h10.88v36.96c0 15.68 10.4 25.6 27.68 25.6z"
        fill="currentColor"
-       style="-inkscape-font-specification:'Cantarell Bold';fill-opacity:1;stroke:none"
+1       style="-inkscape-font-specification:'Cantarell Bold';fill-opacity:1;stroke:none"
        id="path855" />
   </g>
 </svg>
