@@ -17,9 +17,9 @@
 Given experimental data, it is often desirable to produce a function whose values match
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
-\[
+\\[
 \|\lambda\Delta f\|^2_{L^2(\Omega)} + \sum_i (f(x_i) - y_i)^2 \to\min
-\]
+\\]
 (Rendered with [Purple Pi](https://github.com/nschloe/purple-pi?activate).)
 
 (A similar idea is used in for data smoothing in signal processing; see, e.g.,
