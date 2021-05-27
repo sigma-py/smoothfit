@@ -17,8 +17,10 @@
 Given experimental data, it is often desirable to produce a function whose values match
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
-
-<img src="https://nschloe.github.io/smoothfit/eq0.svg" width="40%">
+\[
+\|\lambda\Delta f\|^2_{L^2(\Omega)} + \sum_i (f(x_i) - y_i)^2 \to\min
+\]
+(Rendered with [Purple Pi](https://github.com/nschloe/purple-pi?activate).)
 
 (A similar idea is used in for data smoothing in signal processing; see, e.g.,
 section 8.3 in [this
@@ -208,11 +210,6 @@ plt.plot(x1, y2, "-", label="5 lowest frequencies")
 plt.grid()
 plt.show()
 ```
-
-#### Disk
-<p align="center">
-  <img alt="smoothfit" src="https://nschloe.github.io/smoothfit/disk.svg" width="60%">
-</p>
 
 ### License
 smoothfit is published under the [GPLv3+
