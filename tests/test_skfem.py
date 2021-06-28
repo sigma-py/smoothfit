@@ -28,11 +28,10 @@ def test_1d(solver, show=False):
     basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
 
     if solver == "Nelder-Mead":
-        ref = 14.16277909395534
+        ref = 21.71607246374152
     else:
-        ref = 30.415677809615335
+        ref = 31.5275152958412
 
-    print(coeffs)
     assert abs(np.dot(coeffs, coeffs) - ref) < 1.0e-10 * ref
 
     if show:
