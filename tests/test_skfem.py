@@ -32,6 +32,7 @@ def test_1d(solver, show=False):
     else:
         ref = 30.415677809615335
 
+    print(coeffs)
     assert abs(np.dot(coeffs, coeffs) - ref) < 1.0e-10 * ref
 
     if show:
