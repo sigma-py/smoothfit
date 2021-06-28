@@ -73,11 +73,15 @@ def _fit_skfem(
     assert degree == 1
 
     if cells.shape[1] == 2:
-        mesh = skfem.MeshLine(points.T, cells.T)
+        mesh = skfem.MeshLine(
+            np.ascontiguousarray(points.T), np.ascontiguousarray(cells.T)
+        )
         element = skfem.ElementLineP1()
     else:
         assert cells.shape[1] == 3
-        mesh = skfem.MeshTri(points.T, cells.T)
+        mesh = skfem.MeshTri(
+            np.ascontiguousarray(points.T), np.ascontiguousarray(cells.T)
+        )
         element = skfem.ElementTriP1()
 
     @skfem.BilinearForm
