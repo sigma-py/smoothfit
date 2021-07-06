@@ -187,7 +187,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-np.random.seed(0)
+rng = np.random.default_rng(0)
 
 # original function
 x0 = np.linspace(-1.0, 1.0, 1000)
