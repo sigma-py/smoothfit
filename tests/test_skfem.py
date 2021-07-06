@@ -197,8 +197,39 @@ def test_2d(solver, write_file=False):
         basis.mesh.save(f"out-{solver}.vtu", point_data={"u": u})
 
 
+def test_quad(write_file=False):
+    n = 200
+    np.random.seed(123)
+    x0 = np.random.rand(n, 2) - 0.5
+    # y0 = np.ones(n)
+    # y0 = x0[:, 0]
+    # y0 = x0[:, 0]**2
+    # y0 = np.cos(np.pi*x0.T[0])
+    # y0 = np.cos(np.pi*x0.T[0]) * np.cos(np.pi*x0.T[1])
+    y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
+
+    points, cells = meshzoo.rectangle_quad((-1.0, -1.0), (1.0, 1.0), 32)
+
+    # import pygmsh
+    # geom = pygmsh.built_in.Geometry()
+    # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
+    # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    # cells = cells['triangle']
+
+    solver = "dense-direct"
+    basis, u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-5, solver=solver)
+
+    # ref = 991.0323831016119
+    # val = np.dot(u, u)
+    # print(solver, val)
+    # assert abs(val - ref) < 1.0e-10 * ref
+
+    if write_file:
+        basis.mesh.save(f"out-{solver}.vtu", point_data={"u": u})
+
+
 if __name__ == "__main__":
-    test_1d("dense-direct", show=True)
+    # test_1d("dense-direct", show=True)
     # test_runge_show()
     # test_noisy_runge()
     # test_samples()
@@ -206,3 +237,4 @@ if __name__ == "__main__":
     # test_2d("lsqr", write_file=True)
     # test_2d("lsmr", write_file=True)
     # test_1d_scale()
+    test_quad(write_file=True)
