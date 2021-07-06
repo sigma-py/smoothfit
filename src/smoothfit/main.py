@@ -287,12 +287,12 @@ def _solve_ls(A, E, y0, solver):
 
 
 def _solve_minimize(A, M, E, y0, solver):
-        def f(x):
-            Ax = A.dot(x)
-            Exy = E.dot(x) - y0
-            return np.dot(Ax, spsolve(M, Ax)) + np.dot(Exy, Exy)
+    def f(x):
+        Ax = A.dot(x)
+        Exy = E.dot(x) - y0
+        return np.dot(Ax, spsolve(M, Ax)) + np.dot(Exy, Exy)
 
-        # Set x0 to be the average of y0
-        x0 = np.full(A.shape[0], np.sum(y0) / y0.shape[0])
-        out = scipy.optimize.minimize(f, x0, method=solver)
-        return out.x
+    # Set x0 to be the average of y0
+    x0 = np.full(A.shape[0], np.sum(y0) / y0.shape[0])
+    out = scipy.optimize.minimize(f, x0, method=solver)
+    return out.x

@@ -10,8 +10,9 @@ import smoothfit
 def test_1d(solver, show=False):
     n = 20
     # x0 = np.linspace(-1.0, 1.0, n)
-    np.random.seed(2)
-    x0 = np.random.rand(n) * 2 - 1
+
+    rng = np.random.default_rng(2)
+    x0 = rng.random(n) * 2 - 1
 
     # y0 = x0.copy()
     # y0 = 1 / (1 + 25*x0**2) + 5.0e-2 * (2*np.random.rand(n)-1)
@@ -80,8 +81,9 @@ def test_runge_show():
 
 def test_noisy_runge():
     n = 100
-    np.random.seed(3)
-    x0 = 2 * np.random.rand(n) - 1.0
+
+    rng = np.random.default_rng(123)
+    x0 = 2 * rng.random(n) - 1.0
     y0 = 1 / (1 + 25 * x0 ** 2)
     y0 += 1.0e-1 * (2 * np.random.rand(*x0.shape) - 1)
 
@@ -169,8 +171,8 @@ def test_samples():
 )
 def test_2d(solver, write_file=False):
     n = 200
-    np.random.seed(123)
-    x0 = np.random.rand(n, 2) - 0.5
+    rng = np.random.default_rng(123)
+    x0 = rng.random((n, 2)) - 0.5
     # y0 = np.ones(n)
     # y0 = x0[:, 0]
     # y0 = x0[:, 0]**2
@@ -199,8 +201,10 @@ def test_2d(solver, write_file=False):
 
 def test_quad(write_file=False):
     n = 200
-    np.random.seed(123)
-    x0 = np.random.rand(n, 2) - 0.5
+
+    rng = np.random.default_rng(1)
+    x0 = rng.random((n, 2)) - 0.5
+
     # y0 = np.ones(n)
     # y0 = x0[:, 0]
     # y0 = x0[:, 0]**2
@@ -209,6 +213,7 @@ def test_quad(write_file=False):
     y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
     points, cells = meshzoo.rectangle_quad((-1.0, -1.0), (1.0, 1.0), 32)
+    # points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), 32)
 
     # import pygmsh
     # geom = pygmsh.built_in.Geometry()

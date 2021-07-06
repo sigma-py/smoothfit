@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-np.random.seed(0)
+rng = np.random.default_rng(0)
 
 x0 = np.linspace(-1.0, 1.0, 1000)
 y0 = 1 / (1 + 25 * x0 ** 2)
 
 n = 51
 x1 = np.linspace(-1.0, 1.0, n)
-y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * np.random.rand(x1.shape[0]) - 1)
+y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * rng.random(x1.shape[0]) - 1)
 
 plt.plot(x0, y0, color="k", alpha=0.2)
 plt.plot(x1, y1, "xk")
