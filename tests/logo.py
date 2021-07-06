@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-np.random.seed(0)
+rng = np.random.default_rng(0)
 
 a = -0.8
 b = +0.8
@@ -12,7 +12,7 @@ plt.plot(x, y, "-", color="#61ded4", linewidth=10, label="1 / (1 + 25 * x**2)")
 
 x0 = np.array([-0.7, -0.5, -0.4, -0.2, 0.0, 0.1, 0.2, 0.4, 0.5, 0.75])
 y0 = 1 / (1 + 25 * x0 ** 2)
-y0 += 1.0e-1 * (2 * np.random.rand(y0.shape[0]) - 1)
+y0 += 1.0e-1 * (2 * rng.random(y0.shape[0]) - 1)
 plt.plot(x0, y0, "Xk", markersize=20)
 
 plt.xlim(a, b)

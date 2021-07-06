@@ -95,11 +95,11 @@ x = np.linspace(a, b, 201)
 plt.plot(x, 1 / (1 + 25 * x ** 2), "-", color="0.8", label="1 / (1 + 25 * x**2)")
 
 # 21 sample points
-np.random.seed(0)
+rng = np.random.default_rng(0)
 n = 51
 x0 = np.linspace(-1.0, 1.0, n)
 y0 = 1 / (1 + 25 * x0 ** 2)
-y0 += 1.0e-1 * (2 * np.random.rand(n) - 1)
+y0 += 1.0e-1 * (2 * rng.random(n) - 1)
 plt.plot(x0, y0, "xk")
 
 lmbda = 5.0e-2
@@ -136,8 +136,8 @@ import numpy as np
 import smoothfit
 
 n = 200
-np.random.seed(123)
-x0 = np.random.rand(n, 2) - 0.5
+rng = np.random.default_rng(123)
+x0 = rng.random((n, 2)) - 0.5
 y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
 # create a triangle mesh for the square
@@ -187,7 +187,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-np.random.seed(0)
+rng = np.random.default_rng(0)
 
 # original function
 x0 = np.linspace(-1.0, 1.0, 1000)
@@ -197,7 +197,7 @@ plt.plot(x0, y0, color="k", alpha=0.2)
 # create sample points
 n = 51
 x1 = np.linspace(-1.0, 1.0, n)  # only works if samples are evenly spaced
-y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * np.random.rand(x1.shape[0]) - 1)
+y1 = 1 / (1 + 25 * x1 ** 2) + 1.0e-1 * (2 * rng.random(x1.shape[0]) - 1)
 plt.plot(x1, y1, "xk")
 
 # Cut off the high frequencies in the transformed space and transform back

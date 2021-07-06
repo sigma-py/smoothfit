@@ -10,8 +10,9 @@ import smoothfit
 def test_1d(solver, show=False):
     n = 20
     # x0 = np.linspace(-1.0, 1.0, n)
-    np.random.seed(2)
-    x0 = np.random.rand(n) * 2 - 1
+
+    rng = np.random.default_rng(2)
+    x0 = rng.random(n) * 2 - 1
 
     # y0 = x0.copy()
     # y0 = 1 / (1 + 25*x0**2) + 5.0e-2 * (2*np.random.rand(n)-1)
@@ -28,9 +29,9 @@ def test_1d(solver, show=False):
     basis, coeffs = smoothfit.fit1d(x0, y0, a, b, 64, lmbda, degree=1, solver=solver)
 
     if solver == "Nelder-Mead":
-        ref = 21.71607246374152
+        ref = 14.27840047789019
     else:
-        ref = 31.5275152958412
+        ref = 36.311654900989524
 
     assert abs(np.dot(coeffs, coeffs) - ref) < 1.0e-10 * ref
 
@@ -80,8 +81,9 @@ def test_runge_show():
 
 def test_noisy_runge():
     n = 100
-    np.random.seed(3)
-    x0 = 2 * np.random.rand(n) - 1.0
+
+    rng = np.random.default_rng(123)
+    x0 = 2 * rng.random(n) - 1.0
     y0 = 1 / (1 + 25 * x0 ** 2)
     y0 += 1.0e-1 * (2 * np.random.rand(*x0.shape) - 1)
 
@@ -169,8 +171,8 @@ def test_samples():
 )
 def test_2d(solver, write_file=False):
     n = 200
-    np.random.seed(123)
-    x0 = np.random.rand(n, 2) - 0.5
+    rng = np.random.default_rng(123)
+    x0 = rng.random((n, 2)) - 0.5
     # y0 = np.ones(n)
     # y0 = x0[:, 0]
     # y0 = x0[:, 0]**2
@@ -197,8 +199,42 @@ def test_2d(solver, write_file=False):
         basis.mesh.save(f"out-{solver}.vtu", point_data={"u": u})
 
 
+def test_quad(write_file=False):
+    n = 200
+
+    rng = np.random.default_rng(1)
+    x0 = rng.random((n, 2)) - 0.5
+
+    # y0 = np.ones(n)
+    # y0 = x0[:, 0]
+    # y0 = x0[:, 0]**2
+    # y0 = np.cos(np.pi*x0.T[0])
+    # y0 = np.cos(np.pi*x0.T[0]) * np.cos(np.pi*x0.T[1])
+    y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
+
+    points, cells = meshzoo.rectangle_quad((-1.0, -1.0), (1.0, 1.0), 32)
+    # points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), 32)
+
+    # import pygmsh
+    # geom = pygmsh.built_in.Geometry()
+    # geom.add_circle([0.0, 0.0, 0.0], 1.0, 0.1)
+    # points, cells, _, _, _ = pygmsh.generate_mesh(geom)
+    # cells = cells['triangle']
+
+    solver = "dense-direct"
+    basis, u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-5, solver=solver)
+
+    # ref = 991.0323831016119
+    # val = np.dot(u, u)
+    # print(solver, val)
+    # assert abs(val - ref) < 1.0e-10 * ref
+
+    if write_file:
+        basis.mesh.save(f"out-{solver}.vtu", point_data={"u": u})
+
+
 if __name__ == "__main__":
-    test_1d("dense-direct", show=True)
+    # test_1d("dense-direct", show=True)
     # test_runge_show()
     # test_noisy_runge()
     # test_samples()
@@ -206,3 +242,4 @@ if __name__ == "__main__":
     # test_2d("lsqr", write_file=True)
     # test_2d("lsmr", write_file=True)
     # test_1d_scale()
+    test_quad(write_file=True)

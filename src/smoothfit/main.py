@@ -77,12 +77,17 @@ def _fit_skfem(
             np.ascontiguousarray(points.T), np.ascontiguousarray(cells.T)
         )
         element = skfem.ElementLineP1()
-    else:
-        assert cells.shape[1] == 3
+    elif cells.shape[1] == 3:
         mesh = skfem.MeshTri(
             np.ascontiguousarray(points.T), np.ascontiguousarray(cells.T)
         )
         element = skfem.ElementTriP1()
+    else:
+        assert cells.shape[1] == 4
+        mesh = skfem.MeshQuad(
+            np.ascontiguousarray(points.T), np.ascontiguousarray(cells.T)
+        )
+        element = skfem.ElementQuad1()
 
     @skfem.BilinearForm
     def mass(u, v, _):
@@ -92,7 +97,7 @@ def _fit_skfem(
     def flux(u, v, w):
         return dot(w.n, u.grad) * v
 
-    basis = skfem.InteriorBasis(mesh, element)
+    basis = skfem.CellBasis(mesh, element)
     facet_basis = skfem.FacetBasis(basis.mesh, basis.elem)
 
     lap = skfem.asm(laplace, basis)
@@ -219,62 +224,75 @@ def _fit_dolfin(
 
 def _solve(A, M, E, y0, solver):
     if solver == "dense-direct":
-        # Minv is dense, yikes!
-        a = A.toarray()
-        m = M.toarray()
-        e = E.toarray()
-        AT_Minv_A = np.dot(a.T, np.linalg.solve(m, a)) + np.dot(e.T, e)
-        ET_b = np.dot(e.T, y0)
-        x = np.linalg.solve(AT_Minv_A, ET_b)
-
+        return _solve_dense_direct(A, M, E, y0)
     elif solver == "sparse-cg":
-
-        def matvec(x):
-            Ax = A.dot(x)
-            return A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
-
-        lop = pykry.LinearOperator((E.shape[1], E.shape[1]), float, dot=matvec)
-
-        ET_b = E.T.dot(y0)
-        out = pykry.cg(lop, ET_b, tol=1.0e-10, maxiter=1000)
-        x = out.xk
-
-        # import matplotlib.pyplot as plt
-        # plt.semilogy(out.resnorms)
-        # plt.grid()
-        # plt.show()
+        return _solve_sparse_cg(A, M, E, y0)
     elif solver in ["lsqr", "lsmr"]:
-        # Scipy implementations of both LSQR and LSMR can only be used with the standard
-        # l_2 inner product. Let's do this here, but keep in mind that the factor M^{-1}
-        # is not considered here, and lambda needs to be adapted for each different n.
-        # The discrete residual is not an approximation to the inner product of the
-        # continuous problem here.
-        # Keep an eye on <https://scicomp.stackexchange.com/q/37115/3980>, perhaps
-        # there'll be a good idea for a preconditioner one day.
-        lop = scipy.sparse.linalg.LinearOperator(
-            (A.shape[0] + E.shape[0], A.shape[1]),
-            matvec=lambda x: np.concatenate([A @ x, E @ x]),
-            rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
-        )
-        b = np.concatenate([np.zeros(A.shape[0]), y0])
-        if solver == "lsqr":
-            out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
-        else:
-            assert solver == "lsmr"
-            out = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
-        x = out[0]
-        if out[4] > 1.0e-10:
-            warnings.warn(f"{solver} residual 2-norm is {out[4]}.")
-    else:
+        return _solve_ls(A, E, y0, solver)
 
-        def f(x):
-            Ax = A.dot(x)
-            Exy = E.dot(x) - y0
-            return np.dot(Ax, spsolve(M, Ax)) + np.dot(Exy, Exy)
+    return _solve_minimize(A, M, E, y0, solver)
 
-        # Set x0 to be the average of y0
-        x0 = np.full(A.shape[0], np.sum(y0) / y0.shape[0])
-        out = scipy.optimize.minimize(f, x0, method=solver)
-        x = out.x
 
+def _solve_dense_direct(A, M, E, y0):
+    # Minv is dense, yikes!
+    a = A.toarray()
+    m = M.toarray()
+    e = E.toarray()
+    AT_Minv_A = np.dot(a.T, np.linalg.solve(m, a)) + np.dot(e.T, e)
+    ET_b = np.dot(e.T, y0)
+    return np.linalg.solve(AT_Minv_A, ET_b)
+
+
+def _solve_sparse_cg(A, M, E, y0):
+    def matvec(x):
+        Ax = A.dot(x)
+        return A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
+
+    lop = pykry.LinearOperator((E.shape[1], E.shape[1]), float, dot=matvec)
+
+    ET_b = E.T.dot(y0)
+    out = pykry.cg(lop, ET_b, tol=1.0e-10, maxiter=1000)
+    x = out.xk
+
+    # import matplotlib.pyplot as plt
+    # plt.semilogy(out.resnorms)
+    # plt.grid()
+    # plt.show()
     return x
+
+
+def _solve_ls(A, E, y0, solver):
+    # Scipy implementations of both LSQR and LSMR can only be used with the standard
+    # l_2 inner product. Let's do this here, but keep in mind that the factor M^{-1}
+    # is not considered here, and lambda needs to be adapted for each different n.
+    # The discrete residual is not an approximation to the inner product of the
+    # continuous problem here.
+    # Keep an eye on <https://scicomp.stackexchange.com/q/37115/3980>, perhaps
+    # there'll be a good idea for a preconditioner one day.
+    lop = scipy.sparse.linalg.LinearOperator(
+        (A.shape[0] + E.shape[0], A.shape[1]),
+        matvec=lambda x: np.concatenate([A @ x, E @ x]),
+        rmatvec=lambda y: A.T @ y[: A.shape[0]] + E.T @ y[A.shape[0] :],
+    )
+    b = np.concatenate([np.zeros(A.shape[0]), y0])
+    if solver == "lsqr":
+        out = scipy.sparse.linalg.lsqr(lop, b, atol=1.0e-10)
+    else:
+        assert solver == "lsmr"
+        out = scipy.sparse.linalg.lsmr(lop, b, atol=1.0e-10)
+    x = out[0]
+    if out[4] > 1.0e-10:
+        warnings.warn(f"{solver} residual 2-norm is {out[4]}.")
+    return x
+
+
+def _solve_minimize(A, M, E, y0, solver):
+    def f(x):
+        Ax = A.dot(x)
+        Exy = E.dot(x) - y0
+        return np.dot(Ax, spsolve(M, Ax)) + np.dot(Exy, Exy)
+
+    # Set x0 to be the average of y0
+    x0 = np.full(A.shape[0], np.sum(y0) / y0.shape[0])
+    out = scipy.optimize.minimize(f, x0, method=solver)
+    return out.x
