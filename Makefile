@@ -2,6 +2,8 @@ VERSION=$(shell python3 -c "from configparser import ConfigParser; p = ConfigPar
 
 default:
 	@echo "\"make publish\"?"
+	@echo ""
+	cat Makefile
 
 tag:
 	@if [ "$(shell git rev-parse --abbrev-ref HEAD)" != "main" ]; then exit 1; fi
@@ -28,3 +30,9 @@ format:
 lint:
 	black --check .
 	flake8 .
+
+develop_install:
+	flit install --pth-file
+
+run_tests:
+	tox

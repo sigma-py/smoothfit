@@ -1,3 +1,4 @@
+"""smoothfit"""
 from .__about__ import __version__
 from .main import fit, fit1d
 
