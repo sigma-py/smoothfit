@@ -182,6 +182,11 @@ points, and simply cut off the high frequencies after Fourier transformation.
 
 This approach is fast, but only works for evenly spaced samples.
 
+> [For equidistant curve fitting there is nothing else that could compete with the
+> Fourier series.](https://youtu.be/avSHHi9QCjA?t=1543)
+> -- Cornelius Lanczos
+
+
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
