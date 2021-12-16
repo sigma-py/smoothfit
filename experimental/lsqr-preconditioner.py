@@ -1,15 +1,15 @@
 """Play around with preconditioners for LSQR.
 """
+import krylov
 import krypy
 import meshzoo
 import numpy as np
 import perfplot
 import pyamg
-import pykry
 import scipy.optimize
 import skfem
 from scipy import sparse
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import LinearOperator, spsolve
 from skfem.helpers import dot
 from skfem.models.poisson import laplace
 
@@ -152,11 +152,11 @@ def sparse_cg(data):
         Ax = A.dot(x)
         return A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
 
-    lop = pykry.LinearOperator((E.shape[1], E.shape[1]), float, dot=matvec)
+    lop = LinearOperator((E.shape[1], E.shape[1]), dtype=float, matvec=matvec)
 
     ET_b = E.T.dot(y0)
     try:
-        out = pykry.cg(lop, ET_b, tol=1.0e-10, maxiter=10000)
+        out = krylov.cg(lop, ET_b, tol=1.0e-10, maxiter=10000)
         x = out.xk
     except krypy.utils.ConvergenceError:
         x = np.nan

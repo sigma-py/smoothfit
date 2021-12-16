@@ -1,10 +1,10 @@
 import warnings
 
+import krylov
 import numpy as np
-import pykry
 import scipy.optimize
 from scipy import sparse
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import LinearOperator, spsolve
 
 
 def fit1d(
@@ -248,11 +248,10 @@ def _solve_sparse_cg(A, M, E, y0):
         Ax = A.dot(x)
         return A.T.dot(sparse.linalg.spsolve(M, Ax)) + E.T.dot(E.dot(x))
 
-    lop = pykry.LinearOperator((E.shape[1], E.shape[1]), float, dot=matvec)
+    lop = LinearOperator(shape=(E.shape[1], E.shape[1]), dtype=float, matvec=matvec)
 
     ET_b = E.T.dot(y0)
-    out = pykry.cg(lop, ET_b, tol=1.0e-10, maxiter=1000)
-    x = out.xk
+    x, _ = krylov.cg(lop, ET_b, tol=1.0e-10, maxiter=1000)
 
     # import matplotlib.pyplot as plt
     # plt.semilogy(out.resnorms)

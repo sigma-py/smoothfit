@@ -180,7 +180,9 @@ def test_2d(solver, write_file=False):
     # y0 = np.cos(np.pi*x0.T[0]) * np.cos(np.pi*x0.T[1])
     y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
-    points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), 32)
+    points, cells = meshzoo.rectangle_tri(
+        np.linspace(-1.0, 1.0, 32), np.linspace(-1.0, 1.0, 32)
+    )
 
     # import pygmsh
     # geom = pygmsh.built_in.Geometry()
@@ -212,7 +214,9 @@ def test_quad(write_file=False):
     # y0 = np.cos(np.pi*x0.T[0]) * np.cos(np.pi*x0.T[1])
     y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
-    points, cells = meshzoo.rectangle_quad((-1.0, -1.0), (1.0, 1.0), 32)
+    points, cells = meshzoo.rectangle_quad(
+        np.linspace(-1.0, 1.0, 32), np.linspace(-1.0, 1.0, 32)
+    )
     # points, cells = meshzoo.rectangle_tri((-1.0, -1.0), (1.0, 1.0), 32)
 
     # import pygmsh
