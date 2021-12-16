@@ -3,19 +3,21 @@ symmetric: Number of GMRES iterations more or less indepent of the number of unk
 """
 import matplotlib.pyplot as plt
 import meshzoo
-import npx
 import numpy as np
 import pyamg
 import scipy.linalg
+import scipyx
 import skfem as fem
 from skfem.helpers import dot
 from skfem.models.poisson import laplace
 
 rng = np.random.default_rng(0)
 
-for n in range(5, 100, 5):
-    points, cells = meshzoo.rectangle_tri((0.0, 0.0), (1.0, 1.0), n)
-    # points, cells = meshzoo.disk(6, 25)
+tol = 1.0e-8
+
+for n in range(5, 41, 5):
+    # points, cells = meshzoo.rectangle_tri((0.0, 0.0), (1.0, 1.0), n)
+    points, cells = meshzoo.disk(6, n)
     print(f"{n = }, {len(points) = }")
 
     @fem.BilinearForm
@@ -45,7 +47,6 @@ for n in range(5, 100, 5):
         coarse_solver="jacobi",
         symmetry="nonsymmetric",
         max_coarse=100,
-        # B=scipy.linalg.null_space(A.toarray())
     )
     M = ml.aspreconditioner(cycle="V")
 
@@ -53,14 +54,16 @@ for n in range(5, 100, 5):
     # print(np.dot(x, M @ y))
     # print(np.dot(M @ x, y))
 
-    x = rng.random(M.shape[1])
-    y = rng.random(M.shape[1])
-
-    x, info = npx.gmres(A, b, tol=1e-12, M=M, maxiter=20)
+    _, info = scipyx.gmres(A, b, tol=tol, M=M, maxiter=20)
     # res = b - A @ info.xk
 
-    plt.semilogy(np.arange(len(info.resnorms)), info.resnorms)
-    plt.xlabel("step")
-    plt.ylabel("residual")
-    plt.show()
-    # plt.savefig("out.png", transparent=True, bbox_inches="tight")
+    num_unknowns = A.shape[1]
+    plt.semilogy(
+        np.arange(len(info.resnorms)), info.resnorms, label=f"N={num_unknowns}"
+    )
+
+plt.xlabel("step")
+plt.ylabel("residual")
+plt.legend()
+plt.savefig("out.png", bbox_inches="tight")
+plt.show()

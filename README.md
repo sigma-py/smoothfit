@@ -17,9 +17,11 @@
 Given experimental data, it is often desirable to produce a function whose values match
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
+
 ```math
 \|\lambda\Delta f\|^2_{L^2(\Omega)} + \sum_i (f(x_i) - y_i)^2 \to\min
 ```
+
 (Rendered with [xdoc](https://chrome.google.com/webstore/detail/xdoc/anidddebgkllnnnnjfkmjcaallemhjee).)
 
 (A similar idea is used in for data smoothing in signal processing; see, e.g.,
@@ -122,9 +124,9 @@ x0 = np.array([0.038, 0.194, 0.425, 0.626, 1.253, 2.500, 3.740])
 y0 = np.array([0.050, 0.127, 0.094, 0.2122, 0.2729, 0.2665, 0.3317])
 u = smoothfit.fit1d(x0, y0, 0, 4, 1000, degree=1, lmbda=1.0)
 ```
+
 Some noisy example data taken from
 [Wikipedia](https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm#Example).
-
 
 #### A two-dimensional example
 
@@ -141,7 +143,9 @@ x0 = rng.random((n, 2)) - 0.5
 y0 = np.cos(np.pi * np.sqrt(x0.T[0] ** 2 + x0.T[1] ** 2))
 
 # create a triangle mesh for the square
-points, cells = meshzoo.rectangle(-1.0, 1.0, -1.0, 1.0, 32, 32)
+points, cells = meshzoo.rectangle_tri(
+    np.linspace(-1.0, 1.0, 32), np.linspace(-1.0, 1.0, 32)
+)
 
 basis, u = smoothfit.fit(x0, y0, points, cells, lmbda=1.0e-4, solver="dense-direct")
 
@@ -153,7 +157,6 @@ This example approximates a function from _R<sup>2</sup>_ to _R_ (without noise 
 samples). Note that the absence of noise the data allows us to pick a rather small
 `lmbda` such that all sample points are approximated well.
 
-
 ### Comparison with other approaches
 
 #### Polynomial fitting/regression
@@ -161,17 +164,16 @@ samples). Note that the absence of noise the data allows us to pick a rather sma
 <img src="https://nschloe.github.io/smoothfit/runge-polyfit.webp" width="60%">
 
 The classical approach to data fitting is [polynomial
-regression](https://en.wikipedia.org/wiki/Polynomial_regression).  Polynomials are
+regression](https://en.wikipedia.org/wiki/Polynomial_regression). Polynomials are
 chosen because they are very simple, can be evaluated quickly, and [can be made to fit
 any function very closely](https://en.wikipedia.org/wiki/Stone–Weierstrass_theorem).
 
 There are, however, some fundamental problems:
 
- * Your data might not actually fit a polynomial of low degree.
- * [Runge's phenomenon](//en.wikipedia.org/wiki/Runge%27s_phenomenon).
+- Your data might not actually fit a polynomial of low degree.
+- [Runge's phenomenon](//en.wikipedia.org/wiki/Runge%27s_phenomenon).
 
 This above plot highlights the problem with oscillations.
-
 
 #### Fourier smoothing
 
@@ -181,6 +183,10 @@ One approach to data fitting with smoothing is to create a function with all dat
 points, and simply cut off the high frequencies after Fourier transformation.
 
 This approach is fast, but only works for evenly spaced samples.
+
+> [For equidistant curve fitting there is nothing else that could compete with the
+> Fourier series.](https://youtu.be/avSHHi9QCjA?t=1543)
+> -- Cornelius Lanczos
 
 ```python
 import matplotlib.pyplot as plt
@@ -212,5 +218,6 @@ plt.show()
 ```
 
 ### License
+
 smoothfit is published under the [GPLv3+
 license](https://www.gnu.org/licenses/gpl-3.0.en.html).
