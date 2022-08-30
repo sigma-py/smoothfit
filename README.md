@@ -18,9 +18,9 @@ Given experimental data, it is often desirable to produce a function whose value
 the data to some degree. This package implements a robust approach to data fitting based
 on the minimization problem
 
-```math
-\|\lambda\Delta f\|^2_{L^2(\Omega)} + \sum_i (f(x_i) - y_i)^2 \to\min
-```
+$$
+  \lambda\Delta f\|^2_{L^2(\Omega)} + \sum_i (f(x_i) - y_i)^2 \to\min
+$$
 
 (Rendered with [xdoc](https://chrome.google.com/webstore/detail/xdoc/anidddebgkllnnnnjfkmjcaallemhjee).)
 
